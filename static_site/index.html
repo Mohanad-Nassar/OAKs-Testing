@@ -151,7 +151,22 @@ dl.keywords dd { margin: 0; color: var(--muted); }
 
 .badge { justify-self: start; display: inline-block; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 .feature { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: grid; gap: 12px; }
-.feature .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.table-wrap { overflow-x: auto; }
+.quiz-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.quiz-table th, .quiz-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
+.quiz-table th[scope="row"], .quiz-table thead th:first-child { text-align: left; font-weight: 600; }
+.quiz-table thead th { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.quiz-table td a { display: inline-block; min-width: 2.6em; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); font-weight: 600; text-decoration: none; }
+.quiz-table .narrow { display: none; }
+@media (max-width: 560px) {
+  .quiz-table .wide { display: none; }
+  .quiz-table .narrow { display: inline; }
+  .quiz-table th, .quiz-table td { padding: 8px 4px; }
+  .quiz-table th[scope="row"] { white-space: normal; font-size: .9rem; }
+  .quiz-table td a { min-width: 0; padding: 2px 6px; font-size: .9rem; }
+  .feature { padding: 16px 12px; }
+}
+.quiz-table td a:hover { background: var(--accent); color: var(--on-accent); }
 .quiz-links { display: grid; gap: 10px; }
 .quiz-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
 .quiz-link:hover { transform: none; border-color: var(--line); }
@@ -260,7 +275,9 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
 
 <footer class="wrap">
   Curriculum data from the <a href="https://github.com/oaknational/oak-curriculum-ontology">Oak Curriculum Ontology</a>
-  by Oak National Academy, under the Open Government Licence v3.0. This is a test project, not an official Oak product.
+  and quiz questions from <a href="https://open-api.thenational.academy/">Oak's Open API</a>, by Oak National Academy,
+  under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.
+  This is a test project, not an official Oak product.
 </footer>
 
 <script>
@@ -393,24 +410,35 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
         <p>Pick your year to see your subjects, units and lessons, then test yourself on the mistakes people often make.</p>
       </section>
       ${progress}
-      ${quizFeature(idx)}
       <section><h2>Choose your year</h2><div class="grid years">${years}</div></section>
       <section>
         <h2>Or search for a topic</h2>
         <input id="home-search" class="big-search" type="search" placeholder="Try ‘fractions’, ‘Macbeth’ or ‘volcanoes’" aria-label="Search lessons and units" autocomplete="off">
-      </section>`);
+      </section>
+      ${quizFeature(idx)}`);
     document.getElementById("home-search").addEventListener("input", (e) => startSearch(e.target.value));
   }
 
   function quizFeature(idx) {
+    // One row per subject, one column per year; each cell links to that programme.
     const progs = Object.entries(idx.programmes).filter(([, p]) => p.quizzes);
     if (!progs.length) return "";
+    const years = [...new Set(progs.map(([, p]) => p.year))].sort((a, b) => a - b);
+    const rows = new Map();
+    for (const [pid, p] of progs) {
+      if (!rows.has(p.title)) rows.set(p.title, {});
+      rows.get(p.title)[p.year] = { pid, n: p.quizzes };
+    }
+    const body = [...rows.keys()].sort().map((title) => `<tr><th scope="row">${esc(title)}</th>${years.map((y) => {
+      const cell = rows.get(title)[y];
+      return `<td>${cell ? `<a href="#prog-${cell.pid}" title="${plural(cell.n, "lesson")} with quizzes">${cell.n}</a>` : `<span class="muted" aria-label="none">–</span>`}</td>`;
+    }).join("")}</tr>`).join("");
     return `<section class="feature">
-      <span class="badge">New</span>
       <div><h2>Starter and exit quizzes</h2>
-      <p class="muted">Real Oak quiz questions for each lesson, marked as you go. Available now for:</p></div>
-      <div class="grid">${progs.map(([pid, p]) =>
-        `<a class="tile" href="#prog-${pid}"><strong>${esc(p.title)}</strong><span class="muted small">Year ${p.year} · ${plural(p.quizzes, "lesson")} with quizzes</span></a>`).join("")}</div>
+      <p class="muted">Oak quiz questions for each lesson: take them yourself, or show them on the board. Numbers are lessons with quizzes.</p></div>
+      <div class="table-wrap"><table class="quiz-table">
+        <thead><tr><th scope="col">Subject</th>${years.map((y) => `<th scope="col"><span class="wide">Year </span><span class="narrow" aria-hidden="true">Y</span>${y}</th>`).join("")}</tr></thead>
+        <tbody>${body}</tbody></table></div>
     </section>`;
   }
 

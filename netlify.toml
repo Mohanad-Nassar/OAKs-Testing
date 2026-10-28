@@ -1,0 +1,23 @@
+# The site is pre-built and committed in site/ (see scripts/build_static.py), so Netlify only
+# needs to publish that folder: no build step, no API key, no Python.
+[build]
+  publish = "site"
+  command = ""
+
+# The page changes with every rebuild; always check for a newer copy.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Content-Type = "application/json; charset=utf-8"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

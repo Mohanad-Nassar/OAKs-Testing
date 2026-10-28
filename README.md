@@ -65,6 +65,30 @@ lesson page). Every question stays visible: the page picks the column count and 
 fit the screen. Reveal answers one at a time with →, ↓ or Space (← or ↑ to step back,
 Home/End for none/all), or all at once with "Show all answers".
 
+## Deploying to Netlify
+
+The built site is committed in `site/`, and `netlify.toml` tells Netlify to publish that folder
+as-is. There is no build step on Netlify, so it needs no Python, no database download and no
+API key.
+
+1. In Netlify: **Add new site → Import an existing project → GitHub**, and pick this repository.
+2. Choose the branch to deploy. Netlify reads the publish folder from `netlify.toml`; leave
+   the build command empty.
+3. Deploy. Every push to that branch redeploys automatically.
+
+To update the content, rebuild locally (or in a Claude session that has the API key) and commit
+`site/`:
+
+```bash
+uv run python scripts/fetch_quizzes.py     # optional: refresh quizzes from Oak's API
+uv run python scripts/build_static.py      # rebuilds site/ (takes a few minutes)
+uv run pytest                              # checks site/ is complete and up to date
+git add site && git commit -m "Rebuild site"
+```
+
+After editing only `static_site/index.html`, `uv run python scripts/build_static.py --page-only`
+is enough. The tests fail if `site/index.html` is out of date with its source.
+
 ## Tests
 
 ```bash

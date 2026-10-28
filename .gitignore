@@ -3,6 +3,5 @@ __pycache__/
 .venv/
 .pytest_cache/
 data/*.sqlite
-site/
 data/*.json
 data/quiz-images/

@@ -10,8 +10,12 @@ progress tracking in the browser. This script exports the KS3–KS4 data it need
 
 Quizzes come from data/oak-quizzes.json (see scripts/fetch_quizzes.py) when it exists.
 
+The output is a complete static site: publish the site/ folder as-is (Netlify uses
+netlify.toml at the repo root).
+
 Usage:
-    uv run python scripts/build_static.py
+    uv run python scripts/build_static.py              # data and page
+    uv run python scripts/build_static.py --page-only  # just refresh site/index.html
 """
 
 import hashlib
@@ -31,6 +35,36 @@ from oak_explorer.quiz import convert_quiz, math_segments, to_mathml  # noqa: E4
 OUT = ROOT / "site"
 QUIZZES = ROOT / "data" / "oak-quizzes.json"
 IMAGE_CACHE = ROOT / "data" / "quiz-images"
+
+# static_site/index.html is a page body (the shape claude.ai hosting expects). Static hosts serve
+# files as they are, so the build wraps it in a full document with its own charset and base styles.
+DOCUMENT = """<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Browse Oak National Academy's Year 7–11 curriculum, take starter and exit quizzes, and show them on the board.">
+<style>
+:root {{ padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }}
+body {{ margin: 0; font-size: 14px; }}
+img {{ max-width: 100%; }}
+[hidden] {{ display: none !important; }}
+</style>
+{head}
+</head>
+<body>
+{body}
+</body>
+</html>
+"""
+
+
+def write_page() -> None:
+    page = (ROOT / "static_site" / "index.html").read_text(encoding="utf-8")
+    # The page's <title>, font links and <style> come before its first element; they belong in <head>.
+    split = page.index('<header class="site">')
+    html = DOCUMENT.format(head=page[:split].strip(), body=page[split:].strip())
+    (OUT / "index.html").write_text(html, encoding="utf-8")
 
 
 class ImageStore:
@@ -172,7 +206,7 @@ def build() -> None:
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "data").mkdir(parents=True)
-    shutil.copy(ROOT / "static_site" / "index.html", OUT / "index.html")
+    write_page()
     _write(
         OUT / "data" / "index.json",
         {
@@ -215,4 +249,8 @@ def _write(path: Path, data) -> None:
 
 
 if __name__ == "__main__":
-    build()
+    if "--page-only" in sys.argv[1:]:
+        write_page()
+        print(f"Wrote {OUT / 'index.html'}")
+    else:
+        build()
