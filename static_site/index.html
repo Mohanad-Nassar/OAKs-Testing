@@ -187,7 +187,8 @@ dl.keywords dd { margin: 0; color: var(--muted); }
 .bq li { display: flex; gap: .45em; min-width: 0; padding: .05em .3em; border-radius: .3em; }
 .bq li > div { min-width: 0; }
 .bq .letter { flex: none; font-weight: 700; color: var(--accent); }
-.bq .pairs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: .3em 1em; }
+.bq .pairs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: .3em 1.2em; }
+.bq .pairs > ol + ol { border-left: 2px solid var(--line); padding-left: 1em; }
 .bq img { max-height: 6em; width: auto; align-self: flex-start; background: #fff; border-radius: .3em; }
 /* Answers keep their space while hidden, so revealing them never changes the fitted layout. */
 .bq .answer { visibility: hidden; color: var(--right); font-weight: 700; }
@@ -924,10 +925,14 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
     if (!grid || !grid.clientHeight) return;
     const cards = [...grid.children];
     const n = cards.length;
-    const fits = () => cards.every((c) => c.scrollHeight <= c.clientHeight + 1 && c.scrollWidth <= c.clientWidth + 1 &&
-      [...c.querySelectorAll("pre")].every((pre) => pre.scrollWidth <= pre.clientWidth + 1));
+    // Long numbers and formulas can't wrap, so check the cells inside each card too, not just the card.
+    const inner = cards.map((c) => [...c.querySelectorAll("pre, .bq-q, .bq li > div")]);
+    const fits = () => cards.every((c, i) => c.scrollHeight <= c.clientHeight + 1 && c.scrollWidth <= c.clientWidth + 1 &&
+      inner[i].every((el) => el.scrollWidth <= el.clientWidth + 1));
+    // Four or more questions always form a grid of at least two rows, never one long strip.
+    const maxCols = n >= 4 ? Math.ceil(n / 2) : n;
     let best = { size: 0, cols: 1 };
-    for (let cols = 1; cols <= n; cols++) {
+    for (let cols = 1; cols <= maxCols; cols++) {
       const rows = Math.ceil(n / cols);
       if (cols > 1 && Math.ceil(n / (cols - 1)) === rows) continue; // same rows, narrower cells
       grid.style.setProperty("--cols", cols);
