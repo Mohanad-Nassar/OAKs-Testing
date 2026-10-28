@@ -21,8 +21,11 @@ import urllib.request
 from pathlib import Path
 
 API = "https://open-api.thenational.academy/api/v0"
-# GCSE Computer Science (OCR), Years 10 and 11.
+# Computing: Years 7–9, then GCSE Computer Science (OCR) in Years 10 and 11.
 DEFAULT_PROGRAMMES = (
+    "computing-secondary-year-7",
+    "computing-secondary-year-8",
+    "computing-secondary-year-9",
     "computing-secondary-year-10-gcse-ocr",
     "computing-secondary-year-11-gcse-ocr",
 )

@@ -46,8 +46,8 @@ cd site && python -m http.server 8000
 
 `scripts/fetch_quizzes.py` downloads starter and exit quizzes (multiple choice, short answer,
 matching and ordering) into `data/oak-quizzes.json`, and the static build adds them to the
-matching lessons. It needs an Oak Open API key in `OAK_API_KEY`. By default it fetches GCSE
-Computer Science (OCR) Years 10–11; pass other programme slugs to fetch more.
+matching lessons. It needs an Oak Open API key in `OAK_API_KEY`. By default it fetches Computing
+for Years 7–9 and GCSE Computer Science (OCR) for Years 10–11; pass other programme slugs to fetch more.
 
 ```bash
 uv run python scripts/fetch_quizzes.py
