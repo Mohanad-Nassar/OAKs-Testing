@@ -100,3 +100,13 @@ def test_convert_quiz_skips_unusable_questions():
         no_images,
     )
     assert quiz["starter"] == [] and len(quiz["exit"]) == 1
+
+
+def test_math_segments_and_mathml():
+    from oak_explorer.quiz import math_segments, to_mathml
+
+    quiz = {"starter": [{"type": "short", "q": "Work out $$3\\over 5$$ of 20", "accept": ["12"]}],
+            "exit": [{"type": "mc", "q": "Area?", "options": [{"text": "66 cm$$^2$$"}], "correct": [0]}]}
+    assert math_segments(quiz) == {"3\\over 5", "^2"}
+    assert "<mfrac>" in to_mathml("\\frac{15}{48}")
+    assert to_mathml("") is None

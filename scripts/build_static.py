@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from oak_explorer import db  # noqa: E402
-from oak_explorer.quiz import convert_quiz  # noqa: E402
+from oak_explorer.quiz import convert_quiz, math_segments, to_mathml  # noqa: E402
 
 OUT = ROOT / "site"
 QUIZZES = ROOT / "data" / "oak-quizzes.json"
@@ -101,7 +101,9 @@ def build() -> None:
             ).fetchall()
         )
 
-        chunks: dict[int, dict] = defaultdict(lambda: {"units": {}, "lessons": {}, "mistakes": {}})
+        chunks: dict[int, dict] = defaultdict(
+            lambda: {"units": {}, "lessons": {}, "mistakes": {}, "math": {}}
+        )
         units_index, lesson_chunk, lesson_home = {}, {}, {}
         quiz_lessons: set[int] = set()
         for uv_id in unit_ids:
@@ -147,6 +149,10 @@ def build() -> None:
                 }
                 if quiz and (quiz["starter"] or quiz["exit"]):
                     chunk["lessons"][lesson_id]["quiz"] = quiz
+                    for latex in math_segments(quiz):
+                        mathml = to_mathml(latex)
+                        if mathml:
+                            chunk["math"][latex] = mathml
                     quiz_lessons.add(lesson_id)
 
         for uv_id, meta in units_index.items():

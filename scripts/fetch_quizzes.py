@@ -5,12 +5,12 @@ programme endpoint (up to 300 lessons per request), so each programme costs
 one or two requests against the 1,000-per-hour limit.
 
 Usage:
-    uv run python scripts/fetch_quizzes.py                      # default programmes
+    uv run python scripts/fetch_quizzes.py                      # default selection
+    uv run python scripts/fetch_quizzes.py --years 7 8 9         # every subject in these years
     uv run python scripts/fetch_quizzes.py maths-secondary-year-7 ...
 """
 
 import argparse
-
 import json
 import os
 import re
@@ -21,14 +21,14 @@ import urllib.request
 from pathlib import Path
 
 API = "https://open-api.thenational.academy/api/v0"
-# Computing: Years 7–9, then GCSE Computer Science (OCR) in Years 10 and 11.
-DEFAULT_PROGRAMMES = (
-    "computing-secondary-year-7",
-    "computing-secondary-year-8",
-    "computing-secondary-year-9",
+# Default selection: every subject in Years 7–9, plus GCSE Computer Science (OCR).
+DEFAULT_YEARS = (7, 8, 9)
+EXTRA_PROGRAMMES = (
     "computing-secondary-year-10-gcse-ocr",
     "computing-secondary-year-11-gcse-ocr",
 )
+# Quizzes exist for these, but the ontology has no lessons to attach them to.
+SKIP_SUBJECTS = {"religious-education", "rshe-pshe"}
 DEST = Path(__file__).resolve().parent.parent / "data" / "oak-quizzes.json"
 
 
@@ -55,10 +55,25 @@ def get(url: str, key: str) -> tuple[object, str | None]:
     raise RuntimeError(f"Giving up on {url}")
 
 
+def programmes_for_years(years, key: str) -> tuple[list[str], int]:
+    """Programme slugs for the given years across all subjects, and the requests used."""
+    subjects, _ = get(f"{API}/subjects", key)
+    pattern = re.compile(rf"-year-({'|'.join(str(y) for y in years)})$")
+    found = []
+    for subject in subjects:
+        if subject in SKIP_SUBJECTS:
+            continue
+        programmes, _ = get(f"{API}/subjects/{subject}/programmes", key)
+        found += [p for p in programmes if pattern.search(p)]
+    return found, len(subjects) + 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("programmes", nargs="*", default=DEFAULT_PROGRAMMES,
+    parser.add_argument("programmes", nargs="*",
                         help="Oak API programme slugs (see GET /subjects/{subject}/programmes)")
+    parser.add_argument("--years", nargs="+", type=int,
+                        help="fetch every subject's programmes for these years")
     args = parser.parse_args()
 
     key = os.environ.get("OAK_API_KEY")
@@ -66,9 +81,15 @@ def main() -> int:
         print("Set OAK_API_KEY to your Oak Open API key.", file=sys.stderr)
         return 1
 
+    programmes, requests = list(args.programmes), 0
+    if args.years or not programmes:
+        found, requests = programmes_for_years(args.years or DEFAULT_YEARS, key)
+        programmes += found
+        if not args.programmes and not args.years:
+            programmes += EXTRA_PROGRAMMES
+
     quizzes: dict[str, dict] = {}
-    requests = 0
-    for programme in args.programmes:
+    for programme in programmes:
         url: str | None = f"{API}/programmes/{programme}/questions?limit=300"
         count = 0
         while url:

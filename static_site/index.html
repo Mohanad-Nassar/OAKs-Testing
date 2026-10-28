@@ -189,16 +189,21 @@ dl.keywords dd { margin: 0; color: var(--muted); }
 .bq .letter { flex: none; font-weight: 700; color: var(--accent); }
 .bq .pairs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: .3em 1em; }
 .bq img { max-height: 6em; width: auto; align-self: flex-start; background: #fff; border-radius: .3em; }
-.bq .answer { display: none; color: var(--right); font-weight: 700; }
-.board.show-answers .bq .answer { display: block; }
-.board.show-answers .bq li.correct { background: var(--right-soft); color: var(--right); font-weight: 600; }
-.board.show-answers .bq li.correct .letter { color: var(--right); }
+/* Answers keep their space while hidden, so revealing them never changes the fitted layout. */
+.bq .answer { visibility: hidden; color: var(--right); font-weight: 700; }
+.bq.revealed .answer { visibility: visible; }
+.bq.revealed li.correct { background: var(--right-soft); color: var(--right); }
+.bq.revealed li.correct .letter { color: var(--right); }
+.bq.current { outline: 3px solid var(--accent); outline-offset: -1px; }
+.board-tools .step { font-variant-numeric: tabular-nums; }
+.board-tools button:disabled { opacity: .4; cursor: default; }
 .qscore { font-size: .8rem; font-weight: 600; color: var(--accent); margin-left: 6px; font-variant-numeric: tabular-nums; }
 .qtext { font-size: 1.2rem; line-height: 1.45; margin: 0; }
 .qtext pre, .opt pre, .match-row pre { margin: .5rem 0 0; font-size: .95rem; }
 pre { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-x: auto; white-space: pre; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: .92em; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
 :not(pre) > code { background: var(--accent-soft); padding: 1px 5px; border-radius: 5px; }
+math { font-size: 1.05em; font-family: inherit; math-style: normal; }
 .blank { display: inline-block; min-width: 4em; border-bottom: 2px solid var(--fg); }
 .qimg { background: #fff; border-radius: 10px; padding: 6px; justify-self: start; }
 .opts { display: grid; gap: 8px; }
@@ -263,7 +268,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
 
   const view = document.getElementById("view");
   const headerSearch = document.getElementById("header-search");
-  const state = { index: null, chunks: {}, query: "", quiz: null };
+  const state = { index: null, chunks: {}, math: {}, query: "", quiz: null };
 
   // ---------- data ----------
   async function getJSON(path) {
@@ -276,7 +281,12 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
     return state.index;
   }
   async function loadChunk(id) {
-    if (!state.chunks[id]) state.chunks[id] = getJSON(`data/s-${id}.json`);
+    if (!state.chunks[id]) {
+      state.chunks[id] = getJSON(`data/s-${id}.json`).then((chunk) => {
+        Object.assign(state.math, chunk.math || {}); // LaTeX → MathML, prepared at build time
+        return chunk;
+      });
+    }
     return state.chunks[id];
   }
   async function unitData(uvId) {
@@ -330,12 +340,30 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
       if (i % 2) return `<pre><code>${esc(part.replace(/^\n+|\n+$/g, ""))}</code></pre>`;
       if (i > 0) part = part.replace(/^\n+/, "");
       if (i < parts.length - 1) part = part.replace(/\n+$/, "");
-      return esc(part)
-        .replace(/`([^`]+)`/g, "<code>$1</code>")
-        .replace(/\{\{\s*\}\}/g, '<span class="blank" aria-label="blank"></span>')
-        .replace(/\n/g, "<br>");
+      return part.split("$$").map((seg, j) => j % 2
+        ? state.math[seg] || `<span class="tex">${esc(texToText(seg))}</span>`
+        : esc(seg)
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\{\{\s*\}\}/g, '<span class="blank" aria-label="blank"></span>')
+          .replace(/\n/g, "<br>")).join("");
     }).join("");
   }
+
+  // Readable plain text for LaTeX, for places that can't hold markup (dropdown options).
+  const SUPERSCRIPTS = { 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹", "-": "⁻" };
+  function texToText(tex) {
+    let t = String(tex);
+    for (let k = 0; k < 3; k++) t = t.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "$1/$2").replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)");
+    return t
+      .replace(/\s*\\over\s*/g, "/")
+      .replace(/\^\{?(-?\d+)\}?/g, (_, d) => [...d].map((c) => SUPERSCRIPTS[c] || c).join(""))
+      .replace(/\\times/g, "×").replace(/\\div/g, "÷").replace(/\\pi/g, "π").replace(/\\(leq|le)\b/g, "≤").replace(/\\(geq|ge)\b/g, "≥")
+      .replace(/\\neq/g, "≠").replace(/\\approx/g, "≈").replace(/\\circ/g, "°").replace(/\\Omega/g, "Ω").replace(/\\(cdot|dot)/g, "·")
+      .replace(/\\text\s*\{([^{}]*)\}/g, "$1").replace(/\\(left|right|quad|;|,|space)/g, " ")
+      .replace(/\\[a-zA-Z]+/g, "").replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
+  }
+  // Plain text for a quiz string: math through texToText, other markup removed.
+  const plainText = (text) => String(text ?? "").split("$$").map((seg, j) => j % 2 ? texToText(seg) : seg.replace(/```|`/g, "")).join("");
   const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const crumbs = (...parts) =>
     `<nav class="crumbs" aria-label="Breadcrumb">${["<a href=\"#home\">Home</a>", ...parts].join("<span aria-hidden=\"true\">›</span>")}</nav>`;
@@ -598,7 +626,11 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
     do { a = shuffle(list); } while (a.every((x, i) => x === list[i]));
     return a;
   }
-  const norm = (s) => String(s).toLowerCase().replace(/[“”‘’"']/g, "").replace(/\s+/g, " ").trim().replace(/[.!?]+$/, "");
+  // Lenient comparison for typed answers: ignores case, spaces, quotes, final full stops and how powers are written.
+  const norm = (s) => plainText(s).toLowerCase().replace(/[“”‘’"']/g, "").replace(/[²]/g, "2").replace(/[³]/g, "3")
+    .replace(/\^/g, "").replace(/\s+/g, "").replace(/[.!?]+$/, "");
+  // "66 cm²" also accepts "66": the number on its own.
+  const numberPart = (s) => { const m = plainText(s).trim().match(/^-?[\d.,]+(?=\s*[a-zA-Zµ°%])/); return m ? m[0] : null; };
 
   async function quizView(lessonId, kind, uvId, progId) {
     const data = await lessonData(lessonId);
@@ -651,7 +683,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
     } else if (q.type === "match") {
       body = `<p class="eyebrow">Match each one</p><div class="opts">${q.pairs.map((p, k) => `
         <div class="match-row" data-k="${k}"><div>${rich(p[0])}</div>
-        <select aria-label="Match for ${esc(p[0])}"><option value="">Choose…</option>${r.choices.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select></div>`).join("")}</div>`;
+        <select aria-label="Match for ${esc(plainText(p[0]))}"><option value="">Choose…</option>${r.choices.map((c) => `<option value="${esc(c)}">${esc(plainText(c))}</option>`).join("")}</select></div>`).join("")}</div>`;
     } else if (q.type === "order") {
       body = `<p class="eyebrow">Use the arrows to put these in order</p><ol class="order-list">${r.order.map((item, k) => `
         <li data-item="${item}"><div>${rich(q.items[item])}</div><div class="moves">
@@ -700,8 +732,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
     } else if (q.type === "short") {
       const value = document.getElementById("short").value;
       if (!value.trim()) return hint("Type an answer first.");
-      right = q.accept.some((a) => norm(a) === norm(value));
-      if (!right) reveal = `<p>Accepted answer${q.accept.length > 1 ? "s" : ""}: ${q.accept.map((a) => `<strong>${esc(a)}</strong>`).join(", ")}</p>`;
+      right = q.accept.some((a) => norm(a) === norm(value) || numberPart(a) === value.trim());
+      if (!right) reveal = `<p>Accepted answer${q.accept.length > 1 ? "s" : ""}: ${q.accept.map((a) => `<strong>${rich(a)}</strong>`).join(", ")}</p>`;
     } else if (q.type === "match") {
       const rows = [...box.querySelectorAll(".match-row")];
       if (rows.some((row) => !row.querySelector("select").value)) return hint("Choose a match for every row first.");
@@ -789,7 +821,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
     const questions = quiz[kind];
     state.board = {
       lessonId, kind, suffix,
-      showAnswers: same ? state.board.showAnswers : false,
+      revealed: same ? state.board.revealed : 0, // answers shown, in question order
       // Fixed for this showing, so letters stay put when answers are revealed or the screen resizes.
       layouts: same ? state.board.layouts : questions.map((q) => ({
         match: q.type === "match" ? shuffle(q.pairs.map((_, k) => k)) : null,
@@ -809,7 +841,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
         `<li class="${q.correct.includes(i) ? "correct" : ""}"><span class="letter">${LETTERS[i]}</span><div>${optionHtml(o)}</div></li>`).join("")}</ol>`;
       answer = `Answer: ${q.correct.map((i) => LETTERS[i]).join(", ")}`;
     } else if (q.type === "short") {
-      answer = `Answer: ${q.accept.map(esc).join(" / ")}`;
+      answer = `Answer: ${q.accept.map(rich).join(" / ")}`;
     } else if (q.type === "match") {
       const right = layout.match;
       body = `<div class="hint">Match each number to a letter</div><div class="pairs">
@@ -832,29 +864,59 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
     const other = b.kind === "starter" ? "exit" : "starter";
     const hasOther = lesson.quiz[other] && lesson.quiz[other].length;
     const canFullscreen = document.fullscreenEnabled && document.documentElement.requestFullscreen;
-    board.classList.toggle("show-answers", b.showAnswers);
     board.innerHTML = `
       <div class="board-bar">
         <div class="board-title"><span class="eyebrow">${b.kind === "starter" ? "Starter" : "Exit"} quiz · ${plural(questions.length, "question")}</span><strong>${esc(lesson.name)}</strong></div>
         <div class="board-tools">
           ${hasOther ? `<a href="#board-${b.lessonId}-starter${b.suffix}" aria-pressed="${b.kind === "starter"}">Starter</a><a href="#board-${b.lessonId}-exit${b.suffix}" aria-pressed="${b.kind === "exit"}">Exit</a>` : ""}
-          <button type="button" id="board-answers" aria-pressed="${b.showAnswers}">${b.showAnswers ? "Hide answers" : "Show answers"}</button>
+          <button type="button" id="board-prev" aria-label="Hide the last answer">◀</button>
+          <button type="button" id="board-next" class="step" title="Right arrow, down arrow or space">Next answer ▶</button>
+          <button type="button" id="board-answers"></button>
           ${canFullscreen ? `<button type="button" id="board-full">${document.fullscreenElement ? "Exit full screen" : "Full screen"}</button>` : ""}
           <a href="#lesson-${b.lessonId}${b.suffix}">Close</a>
         </div>
       </div>
       <div class="board-grid" id="board-grid">${questions.map((q, k) => boardQuestion(q, k, b.layouts[k])).join("")}</div>`;
-    document.getElementById("board-answers").addEventListener("click", () => {
-      b.showAnswers = !b.showAnswers;
-      renderBoard(lesson, questions);
-    });
+    document.getElementById("board-answers").addEventListener("click", () => revealTo(b.revealed === questions.length ? 0 : questions.length));
+    document.getElementById("board-next").addEventListener("click", () => revealTo(b.revealed + 1));
+    document.getElementById("board-prev").addEventListener("click", () => revealTo(b.revealed - 1));
     const full = document.getElementById("board-full");
     if (full) full.addEventListener("click", () => {
       const req = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
       Promise.resolve(req).catch(() => {}).finally(() => setTimeout(() => renderBoard(lesson, questions), 150));
     });
     fitBoard();
+    settleBoard();
+    revealTo(b.revealed);
   }
+
+  // Show the first n answers. Only classes change, so the fitted layout stays exactly as it is.
+  function revealTo(n) {
+    const b = state.board;
+    const cards = [...board.querySelectorAll(".bq")];
+    if (!b || !cards.length) return;
+    b.revealed = Math.max(0, Math.min(cards.length, n));
+    cards.forEach((card, k) => {
+      card.classList.toggle("revealed", k < b.revealed);
+      card.classList.toggle("current", b.revealed < cards.length && k === b.revealed - 1);
+    });
+    const all = b.revealed === cards.length;
+    document.getElementById("board-answers").textContent = all ? "Hide answers" : "Show all answers";
+    document.getElementById("board-answers").setAttribute("aria-pressed", String(all));
+    const next = document.getElementById("board-next");
+    next.textContent = all ? `All ${cards.length} answers shown` : `Show answer ${b.revealed + 1} of ${cards.length} ▶`;
+    next.disabled = all;
+    document.getElementById("board-prev").disabled = b.revealed === 0;
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (board.hidden || !state.board || e.altKey || e.ctrlKey || e.metaKey) return;
+    const step = { ArrowRight: 1, ArrowDown: 1, " ": 1, PageDown: 1, Enter: 1, ArrowLeft: -1, ArrowUp: -1, PageUp: -1, Backspace: -1 }[e.key];
+    if (e.key === "Enter" && e.target.closest && e.target.closest("button, a")) return;
+    if (step) { e.preventDefault(); revealTo(state.board.revealed + step); }
+    else if (e.key === "Home") { e.preventDefault(); revealTo(0); }
+    else if (e.key === "End") { e.preventDefault(); revealTo(Infinity); }
+  });
 
   // Try every column count and keep the one that allows the largest text with nothing cut off.
   function fitBoard() {
@@ -880,7 +942,16 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans 
     }
     grid.style.setProperty("--cols", best.cols);
     grid.style.setProperty("--rows", Math.ceil(n / best.cols));
-    grid.style.setProperty("--fs", `${best.size}px`);
+    grid.style.setProperty("--fs", `${(best.size * 0.97).toFixed(2)}px`); // a little slack for late font swaps
+  }
+
+  // Fallback fonts for maths symbols can arrive after the first fit; check again once they have.
+  function boardOverflows() {
+    const grid = document.getElementById("board-grid");
+    return !!grid && [...grid.children].some((c) => c.scrollHeight > c.clientHeight + 1 || c.scrollWidth > c.clientWidth + 1);
+  }
+  function settleBoard() {
+    [120, 400, 1200].forEach((ms) => setTimeout(() => { if (!board.hidden && boardOverflows()) fitBoard(); }, ms));
   }
 
   let fitQueued = false;

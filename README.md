@@ -46,8 +46,8 @@ cd site && python -m http.server 8000
 
 `scripts/fetch_quizzes.py` downloads starter and exit quizzes (multiple choice, short answer,
 matching and ordering) into `data/oak-quizzes.json`, and the static build adds them to the
-matching lessons. It needs an Oak Open API key in `OAK_API_KEY`. By default it fetches Computing
-for Years 7–9 and GCSE Computer Science (OCR) for Years 10–11; pass other programme slugs to fetch more.
+matching lessons. It needs an Oak Open API key in `OAK_API_KEY`. By default it fetches every
+subject for Years 7–9 plus GCSE Computer Science (OCR) for Years 10–11; pass other programme slugs to fetch more.
 
 ```bash
 uv run python scripts/fetch_quizzes.py
@@ -56,6 +56,14 @@ uv run python scripts/build_static.py
 
 Questions that need an image are skipped unless the image can be downloaded from
 `cloudinary-res.thenational.academy`.
+
+Maths is written in LaTeX (`$$3\over 5$$`); the build converts it to MathML, which browsers
+render natively.
+
+**Board view.** Each quiz can be shown on one screen for the whole class ("Show on board" on a
+lesson page). Every question stays visible: the page picks the column count and text size that
+fit the screen. Reveal answers one at a time with →, ↓ or Space (← or ↑ to step back,
+Home/End for none/all), or all at once with "Show all answers".
 
 ## Tests
 

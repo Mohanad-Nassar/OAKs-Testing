@@ -8,7 +8,10 @@ Output question shapes (all have "type" and "q", the question text, and may have
     {"type": "order", "items": ["first", "second", ...]}
 """
 
+import re
 from collections.abc import Callable
+
+from latex2mathml.converter import convert
 
 # Resolves an Oak image URL to a local path, or None if it isn't available.
 ImageResolver = Callable[[str], str | None]
@@ -75,3 +78,30 @@ def convert_quiz(raw: dict, resolve: ImageResolver) -> dict:
         name: [q for q in (convert_question(x, resolve) for x in raw.get(name, [])) if q]
         for name in ("starter", "exit")
     }
+
+
+MATH = re.compile(r"\$\$(.+?)\$\$", re.S)
+
+
+def _strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from _strings(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from _strings(v)
+
+
+def math_segments(quiz: dict) -> set[str]:
+    """Every $$LaTeX$$ segment used in a converted quiz."""
+    return {m for text in _strings(quiz) for m in MATH.findall(text)}
+
+
+def to_mathml(latex: str) -> str | None:
+    """MathML for a LaTeX segment, which browsers render natively; None if it can't be converted."""
+    try:
+        return convert(latex)
+    except Exception:  # latex2mathml raises a variety of parser errors
+        return None
