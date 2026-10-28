@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Oak Explorer{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+  <script src="{{ url_for('static', path='htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', path='progress.js') }}" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">🌳 Oak Explorer</a>
+    <form class="search" action="/search" method="get" role="search">
+      <input type="search" name="q" value="{{ q or '' }}" placeholder="Search lessons, e.g. photosynthesis"
+             aria-label="Search lessons and units">
+    </form>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    Curriculum data from the
+    <a href="https://github.com/oaknational/oak-curriculum-ontology">Oak Curriculum Ontology</a>
+    by Oak National Academy (OGL v3.0). Not an official Oak product.
+  </footer>
+</body>
+</html>

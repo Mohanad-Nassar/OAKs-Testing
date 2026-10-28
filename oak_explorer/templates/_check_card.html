@@ -1,0 +1,34 @@
+{% set base = "/check/" ~ scope ~ "/" ~ item_id %}
+{% if card %}
+<article class="flashcard">
+  <p class="muted">Card {{ i + 1 }} of {{ total }}{% if asked %} · Score {{ score }}/{{ asked }}{% endif %}</p>
+  {% if card.belief %}
+  <p class="prompt">True or false?</p>
+  <blockquote>{{ card.belief }}</blockquote>
+  <div class="actions">
+    {% for c in ["true", "false"] %}
+    <button hx-get="{{ base }}/answer?i={{ i }}&score={{ score }}&asked={{ asked }}&choice={{ c }}"
+            hx-target="#check">{{ c | capitalize }}</button>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="prompt">A common mistake</p>
+  <blockquote>{{ card.statement }}</blockquote>
+  <div class="actions">
+    <button hx-get="{{ base }}/answer?i={{ i }}&score={{ score }}&asked={{ asked }}&choice=reveal"
+            hx-target="#check">Show how to get it right</button>
+  </div>
+  {% endif %}
+</article>
+{% elif total %}
+<article class="flashcard done">
+  <h2>🎉 All done!</h2>
+  {% if asked %}<p>You got <strong>{{ score }} out of {{ asked }}</strong> true-or-false questions right.</p>{% endif %}
+  <div class="actions">
+    <a class="button" href="{{ base }}">Start again</a>
+    <a class="button secondary" href="/{{ scope }}/{{ item_id }}">Back to {{ title }}</a>
+  </div>
+</article>
+{% else %}
+<p>There are no common mistakes listed for this yet.</p>
+{% endif %}

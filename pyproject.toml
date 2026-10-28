@@ -1,0 +1,21 @@
+[project]
+name = "oak-explorer"
+version = "0.1.0"
+description = "A pupil-friendly explorer for Oak National Academy's KS3–KS4 curriculum"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "jinja2>=3.1",
+    "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

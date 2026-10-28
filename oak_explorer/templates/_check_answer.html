@@ -1,0 +1,18 @@
+{% set base = "/check/" ~ scope ~ "/" ~ item_id %}
+<article class="flashcard {% if correct %}right{% elif correct is sameas false %}wrong{% endif %}">
+  <p class="muted">Card {{ i + 1 }} of {{ total }}{% if asked %} · Score {{ score }}/{{ asked }}{% endif %}</p>
+  {% if correct is not none %}
+  <p class="verdict">{% if correct %}✅ Correct, it's false!{% else %}❌ Not quite, it's actually false.{% endif %}</p>
+  <blockquote class="struck">{{ card.belief }}</blockquote>
+  {% else %}
+  <blockquote>{{ card.statement }}</blockquote>
+  {% endif %}
+  <h3>How to get it right</h3>
+  <p>{{ card.correction }}</p>
+  <p class="muted small">Learn more in the lesson: <a href="/lesson/{{ card.lesson_id }}{% if scope == 'unit' %}?u={{ item_id }}{% endif %}">{{ card.lesson }}</a></p>
+  <div class="actions">
+    <button hx-get="{{ base }}?i={{ i + 1 }}&score={{ score }}&asked={{ asked }}" hx-target="#check" autofocus>
+      {% if i + 1 < total %}Next card →{% else %}See my score{% endif %}
+    </button>
+  </div>
+</article>

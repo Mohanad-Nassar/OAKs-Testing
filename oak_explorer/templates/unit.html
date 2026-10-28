@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ unit.name }} · Oak Explorer{% endblock %}
+{% block content %}
+<nav class="crumbs">
+  <a href="/">Home</a> ›
+  {% if programme %}<a href="/year/{{ programme.year_id }}">Year {{ programme.year }}</a> ›
+  <a href="/programme/{{ programme.id }}">{{ programme.title }}</a> ›{% endif %}
+  {{ unit.name }}
+</nav>
+<h1>{{ unit.name }}</h1>
+{% if unit.description %}<p class="lead">{{ unit.description }}</p>{% endif %}
+
+<div class="two-col">
+  <section>
+    <h2>Lessons</h2>
+    <p class="muted" data-unit-progress data-lessons="{{ unit.lessons | map(attribute='id') | join(',') }}"></p>
+    <ol class="lesson-list">
+      {% for l in unit.lessons %}
+      <li data-lesson-id="{{ l.id }}">
+        <a href="/lesson/{{ l.id }}?u={{ unit.id }}{% if programme %}&p={{ programme.id }}{% endif %}">{{ l.name }}</a>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+  <aside>
+    {% if unit.mistake_count %}
+    <a class="cta" href="/check/unit/{{ unit.id }}">🧠 Test yourself: {{ unit.mistake_count }} common mistakes</a>
+    {% endif %}
+    {% if unit.prior_knowledge %}
+    <h2>Before you start, you should know…</h2>
+    <ul class="checklist">
+      {% for item in unit.prior_knowledge %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if unit.why_this_why_now %}
+    <details>
+      <summary>Why are we learning this now?</summary>
+      <p>{{ unit.why_this_why_now }}</p>
+    </details>
+    {% endif %}
+    {% if unit.threads %}
+    <h2>Big ideas</h2>
+    <p class="tags">{% for t in unit.threads %}<span class="tag">{{ t }}</span>{% endfor %}</p>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

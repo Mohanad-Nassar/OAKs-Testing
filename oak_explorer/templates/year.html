@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Year {{ year.number }} · Oak Explorer{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/">Home</a> › Year {{ year.number }}</nav>
+<h1>Year {{ year.number }} subjects</h1>
+{% if year.key_stage == "Key Stage 4" %}
+<p class="muted">At GCSE some subjects come in versions for different exam boards or tiers. Ask your teacher which one you're doing.</p>
+{% endif %}
+<div class="card-grid">
+  {% for p in programmes %}
+  <a class="card" href="/programme/{{ p.id }}">
+    <strong>{{ p.title }}</strong>
+    <span class="muted">{{ p.unit_count }} units</span>
+  </a>
+  {% else %}
+  <p>No subjects found for this year.</p>
+  {% endfor %}
+</div>
+{% endblock %}

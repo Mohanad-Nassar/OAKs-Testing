@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>What are you learning?</h1>
+  <p>Pick your year to see your subjects, units and lessons, then test yourself on the mistakes people often make.</p>
+</section>
+
+<h2>Choose your year</h2>
+<div class="year-grid">
+  {% for y in years %}
+  <a class="year-card" href="/year/{{ y.id }}">
+    <span class="year-num">Year {{ y.number }}</span>
+    <span class="muted">{{ y.key_stage }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+<h2>Or search for a topic</h2>
+<input class="big-search" type="search" name="q" placeholder="Try ‘fractions’, ‘Macbeth’ or ‘volcanoes’"
+       aria-label="Search lessons and units"
+       hx-get="/search" hx-trigger="input changed delay:300ms, search" hx-target="#results">
+<div id="results"></div>
+
+<section class="progress-summary" data-progress-summary hidden>
+  <h2>Your progress</h2>
+  <p>You've marked <strong data-done-count>0</strong> lessons as done on this device.</p>
+</section>
+{% endblock %}

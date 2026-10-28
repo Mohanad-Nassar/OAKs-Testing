@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ programme.title }} Year {{ programme.year }} · Oak Explorer{% endblock %}
+{% macro unit_link(u) %}
+<a class="unit-row" href="/unit/{{ u.id }}?p={{ programme.id }}" data-lessons="{{ u.lesson_ids | join(',') }}">
+  <span class="unit-name">{{ u.name }}</span>
+  <span class="muted">{{ u.lesson_count }} lessons</span>
+  <span class="meter" aria-hidden="true"><span></span></span>
+</a>
+{% endmacro %}
+{% block content %}
+<nav class="crumbs"><a href="/">Home</a> › <a href="/year/{{ programme.year_id }}">Year {{ programme.year }}</a> › {{ programme.title }}</nav>
+<h1>{{ programme.title }} <span class="muted">Year {{ programme.year }}</span></h1>
+<p class="muted">Units are listed in the order they're usually taught.</p>
+<ol class="unit-list">
+  {% for slot in programme.units %}
+  <li>
+    {% if slot.choice %}
+    <div class="choice">
+      <p><strong>{{ slot.choice }}</strong> <span class="muted">· your school picks one of these</span></p>
+      {% for u in slot.options %}{{ unit_link(u) }}{% endfor %}
+    </div>
+    {% else %}
+    {{ unit_link(slot.options[0]) }}
+    {% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{% endblock %}

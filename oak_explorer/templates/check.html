@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Spot the mistake · {{ title }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/">Home</a> › <a href="/{{ scope }}/{{ item_id }}">{{ title }}</a> › Spot the mistake</nav>
+<h1>Spot the mistake</h1>
+<p class="muted">These are things people often get wrong in <strong>{{ title }}</strong>. Decide if each one is true or false, then see the explanation.</p>
+<div id="check">{% include "_check_card.html" %}</div>
+{% endblock %}

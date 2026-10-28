@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ lesson.name }} · Oak Explorer{% endblock %}
+{% block content %}
+<nav class="crumbs">
+  <a href="/">Home</a> ›
+  {% if unit %}<a href="/unit/{{ unit.id }}{% if programme_id %}?p={{ programme_id }}{% endif %}">{{ unit.name }}</a> ›{% endif %}
+  {{ lesson.name }}
+</nav>
+<h1>{{ lesson.name }}</h1>
+
+<label class="done-toggle">
+  <input type="checkbox" data-done-toggle="{{ lesson.id }}"> I've done this lesson
+</label>
+
+{% if lesson.outcome %}
+<section class="outcome">
+  <h2>By the end you'll be able to…</h2>
+  <p>{{ lesson.outcome }}</p>
+</section>
+{% endif %}
+
+<div class="two-col">
+  <section>
+    {% if lesson.key_points %}
+    <h2>Key learning points</h2>
+    <ul class="points">
+      {% for p in lesson.key_points %}<li>{{ p }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  <aside>
+    {% if lesson.mistake_count %}
+    <a class="cta" href="/check/lesson/{{ lesson.id }}">🧠 Spot the mistake ({{ lesson.mistake_count }})</a>
+    {% endif %}
+    {% if lesson.keywords %}
+    <h2>Keywords</h2>
+    <dl class="keywords">
+      {% for k in lesson.keywords %}
+      <dt>{{ k.name }}</dt><dd>{{ k.description }}</dd>
+      {% endfor %}
+    </dl>
+    {% endif %}
+  </aside>
+</div>
+
+{% if unit %}
+<nav class="pager">
+  {% set qs = "?u=" ~ unit.id ~ ("&p=" ~ programme_id if programme_id else "") %}
+  {% if prev_id %}<a href="/lesson/{{ prev_id }}{{ qs }}">← Previous lesson</a>{% else %}<span></span>{% endif %}
+  {% if next_id %}<a href="/lesson/{{ next_id }}{{ qs }}">Next lesson →</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

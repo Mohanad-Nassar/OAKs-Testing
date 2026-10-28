@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Search · Oak Explorer{% endblock %}
+{% block content %}
+<h1>Search</h1>
+<input class="big-search" type="search" name="q" value="{{ q }}" autofocus
+       aria-label="Search lessons and units"
+       hx-get="/search" hx-trigger="input changed delay:300ms, search" hx-target="#results">
+<div id="results">{% include "_search_results.html" %}</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% if q and q|trim|length >= 2 %}
+  {% if not results.units and not results.lessons %}
+  <p class="muted">Nothing found for “{{ q }}”. Try a shorter or different word.</p>
+  {% endif %}
+  {% if results.units %}
+  <h3>Units</h3>
+  <ul class="results">
+    {% for u in results.units %}
+    <li><a href="/unit/{{ u.id }}">{{ u.name }}</a>{% if u.year %} <span class="muted">· Year {{ u.year }}</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if results.lessons %}
+  <h3>Lessons</h3>
+  <ul class="results">
+    {% for l in results.lessons %}
+    <li><a href="/lesson/{{ l.id }}?u={{ l.unit_id }}">{{ l.name }}</a> <span class="muted">· {{ l.unit }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+{% endif %}
