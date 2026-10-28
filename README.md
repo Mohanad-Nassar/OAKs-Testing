@@ -31,6 +31,17 @@ Then open http://127.0.0.1:8000.
 To pin a specific Oak release: `uv run python scripts/download_data.py --tag v0.1.3 --force`.
 Set `OAK_DB=/path/to/oak-curriculum.sqlite` to use a database somewhere else.
 
+## Static version (no server)
+
+`scripts/build_static.py` exports the Year 7–11 data to JSON files (~12 MB) and copies
+`static_site/index.html`, a browser-only version of the app, into `site/`. That folder can be
+hosted anywhere static files are served (it's what the hosted demo uses).
+
+```bash
+uv run python scripts/build_static.py
+cd site && python -m http.server 8000
+```
+
 ## Tests
 
 ```bash

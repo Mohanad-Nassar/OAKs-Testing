@@ -1,0 +1,531 @@
+<title>Oak Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one reading column with a sticky header; lesson and unit pages split into content + sidebar on wide screens. */
+:root {
+  --bg: #f4f6f1;
+  --surface: #ffffff;
+  --fg: #18211b;
+  --muted: #59665d;
+  --line: #d6ddd3;
+  --accent: #1f6b35;
+  --accent-soft: #e1eedf;
+  --on-accent: #ffffff;
+  --right: #1d7339;
+  --right-soft: #e0f2e5;
+  --wrong: #b02a20;
+  --wrong-soft: #fbe6e3;
+  --font: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121714; --surface: #1b221e; --fg: #e9efe9; --muted: #9fada4; --line: #2e3a33;
+    --accent: #74c98a; --accent-soft: #213428; --on-accent: #0c1a10;
+    --right: #82d897; --right-soft: #1d3424; --wrong: #ff8f84; --wrong-soft: #3b2220;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121714; --surface: #1b221e; --fg: #e9efe9; --muted: #9fada4; --line: #2e3a33;
+  --accent: #74c98a; --accent-soft: #213428; --on-accent: #0c1a10;
+  --right: #82d897; --right-soft: #1d3424; --wrong: #ff8f84; --wrong-soft: #3b2220;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 400 17px/1.6 var(--font); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible, label:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; font-weight: 600; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: .25rem 0 .75rem; }
+h2 { font-size: 1.2rem; margin: 0 0 .6rem; }
+h3 { font-size: 1rem; margin: 0 0 .4rem; }
+p { margin: 0 0 .75rem; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.site .wrap { display: flex; gap: 12px 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding-block: 10px; }
+.brand { font-weight: 700; font-size: 1.15rem; color: var(--fg); text-decoration: none; display: inline-flex; gap: 8px; align-items: center; }
+.brand svg { width: 26px; height: 26px; }
+.searchbox { flex: 1 1 240px; max-width: 380px; }
+input[type=search] {
+  width: 100%; font: inherit; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 999px; padding: .5rem 1rem;
+}
+.big-search { font-size: 1.1rem; padding: .8rem 1.2rem; border-width: 2px; }
+
+main.wrap { padding-block: 20px 48px; display: grid; gap: 28px; }
+footer.wrap { padding-block: 0 32px; color: var(--muted); font-size: .8rem; }
+
+.crumbs { font-size: .85rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.lead { font-size: 1.08rem; max-width: 62ch; }
+
+.hero p { max-width: 58ch; font-size: 1.05rem; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+.grid.years { grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); }
+.tile {
+  display: grid; gap: 2px; padding: 14px 16px; min-width: 0;
+  background: var(--surface); color: var(--fg); text-decoration: none;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  transition: border-color .15s, transform .15s;
+}
+.tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+.tile strong { font-weight: 600; }
+.year-num { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ks { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+
+.units { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: unit; }
+.units > li { counter-increment: unit; }
+.unit-row { position: relative; padding-left: 56px; }
+.unit-row::before {
+  content: counter(unit); position: absolute; left: 16px; top: 15px; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: .8rem;
+}
+.choice .unit-row::before { content: "or"; font-size: .7rem; }
+.unit-row.is-done::before { content: "✓"; background: var(--accent); color: var(--on-accent); }
+.choice { border: 2px dashed var(--line); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px; }
+.choice > p { margin: 0 4px; }
+.meter { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.meter span { display: block; height: 100%; background: var(--accent); }
+
+.split { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .split { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+.split > * { min-width: 0; display: grid; gap: 22px; align-content: start; }
+
+.lessons { margin: 0; padding-left: 1.5rem; display: grid; gap: 6px; }
+.lessons li.is-done a::after { content: " ✓"; font-weight: 700; color: var(--accent); }
+ul.plain { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; }
+summary { cursor: pointer; font-weight: 600; }
+details p { margin: .6rem 0 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { background: var(--accent-soft); padding: 2px 10px; border-radius: 999px; font-size: .85rem; }
+
+.btn {
+  display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+  font: inherit; font-weight: 600; cursor: pointer; text-decoration: none;
+  padding: 12px 20px; border-radius: var(--radius); border: 0; background: var(--accent); color: var(--on-accent);
+}
+.btn.ghost { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+.btn.block { width: 100%; }
+
+.done-toggle {
+  justify-self: start; display: inline-flex; align-items: center; gap: 10px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px;
+}
+.done-toggle input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
+.outcome { background: var(--accent-soft); border-radius: var(--radius); padding: 16px 20px; }
+.outcome p { margin: 0; font-size: 1.05rem; }
+dl.keywords { margin: 0; display: grid; gap: 10px; }
+dl.keywords dt { font-weight: 600; }
+dl.keywords dd { margin: 0; color: var(--muted); }
+.pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+.results { list-style: none; margin: 0; padding: 0; }
+.results li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; max-width: 680px; display: grid; gap: 12px; }
+.card.right { border-color: var(--right); background: var(--right-soft); }
+.card.wrong { border-color: var(--wrong); background: var(--wrong-soft); }
+.card .meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; }
+.claim { font-size: 1.3rem; line-height: 1.4; margin: 0; }
+.claim.struck { font-size: 1.05rem; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--wrong); }
+.verdict { font-weight: 700; font-size: 1.15rem; margin: 0; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.actions .btn { min-width: 110px; }
+.progress-dots { display: flex; gap: 4px; flex-wrap: wrap; }
+.progress-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.progress-dots span.r { background: var(--right); }
+.progress-dots span.w { background: var(--wrong); }
+.progress-dots span.s { background: var(--muted); }
+.progress-dots span.now { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.notice { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; }
+
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } .tile:hover { transform: none; } }
+</style>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="#home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="13" r="10" fill="var(--accent)"></circle><rect x="14.5" y="18" width="3" height="11" rx="1.5" fill="var(--accent)"></rect><circle cx="12.5" cy="11" r="2.4" fill="var(--surface)"></circle></svg>
+      Oak Explorer
+    </a>
+    <div class="searchbox">
+      <input id="header-search" type="search" placeholder="Search lessons, e.g. photosynthesis" aria-label="Search lessons and units" autocomplete="off">
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="view">
+  <section class="hero">
+    <h1>What are you learning?</h1>
+    <p>Pick your year to see your subjects, units and lessons, then test yourself on the mistakes people often make.</p>
+    <p class="muted">Loading Years 7–11…</p>
+  </section>
+</main>
+
+<footer class="wrap">
+  Curriculum data from the <a href="https://github.com/oaknational/oak-curriculum-ontology">Oak Curriculum Ontology</a>
+  by Oak National Academy, under the Open Government Licence v3.0. This is a test project, not an official Oak product.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  const view = document.getElementById("view");
+  const headerSearch = document.getElementById("header-search");
+  const state = { index: null, chunks: {}, query: "", quiz: null };
+
+  // ---------- data ----------
+  async function getJSON(path) {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`Couldn't load ${path} (${res.status})`);
+    return res.json();
+  }
+  async function loadIndex() {
+    if (!state.index) state.index = await getJSON("data/index.json");
+    return state.index;
+  }
+  async function loadChunk(id) {
+    if (!state.chunks[id]) state.chunks[id] = getJSON(`data/s-${id}.json`);
+    return state.chunks[id];
+  }
+  async function unitData(uvId) {
+    const idx = await loadIndex();
+    const meta = idx.units[uvId];
+    if (!meta) return null;
+    const chunk = await loadChunk(meta.chunk);
+    return { meta, chunk, unit: chunk.units[uvId] };
+  }
+  async function lessonData(lessonId) {
+    const idx = await loadIndex();
+    const chunkId = idx.lessonChunk[lessonId];
+    if (chunkId === undefined) return null;
+    const chunk = await loadChunk(chunkId);
+    return { chunk, lesson: chunk.lessons[lessonId] };
+  }
+
+  // ---------- progress (this browser only) ----------
+  const KEY = "oak-explorer:done";
+  function loadDone() {
+    try { return new Set(JSON.parse(localStorage.getItem(KEY) || "[]").map(String)); }
+    catch (e) { return new Set(); }
+  }
+  let done = loadDone();
+  function setDone(id, on) {
+    on ? done.add(String(id)) : done.delete(String(id));
+    try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch (e) { /* not saved */ }
+  }
+  const countDone = (ids) => ids.filter((id) => done.has(String(id))).length;
+
+  // ---------- helpers ----------
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const crumbs = (...parts) =>
+    `<nav class="crumbs" aria-label="Breadcrumb">${["<a href=\"#home\">Home</a>", ...parts].join("<span aria-hidden=\"true\">›</span>")}</nav>`;
+  function setView(html, title) {
+    view.innerHTML = html;
+    document.title = title ? `${title} · Oak Explorer` : "Oak Explorer";
+  }
+  function unitHash(uvId, progId) { return `#unit-${uvId}${progId ? `-p-${progId}` : ""}`; }
+  function lessonHash(lessonId, uvId, progId) {
+    return `#lesson-${lessonId}${uvId ? `-u-${uvId}` : ""}${uvId && progId ? `-p-${progId}` : ""}`;
+  }
+
+  // ---------- views ----------
+  async function homeView() {
+    const idx = await loadIndex();
+    const years = idx.years.map((y) => `
+      <a class="tile" href="#year-${y.id}">
+        <span class="ks">${esc(y.key_stage)}</span>
+        <span class="year-num">Year ${y.number}</span>
+      </a>`).join("");
+    const progress = done.size
+      ? `<p class="notice">You've marked <strong>${plural(done.size, "lesson")}</strong> as done on this device.</p>` : "";
+    setView(`
+      <section class="hero">
+        <h1>What are you learning?</h1>
+        <p>Pick your year to see your subjects, units and lessons, then test yourself on the mistakes people often make.</p>
+      </section>
+      ${progress}
+      <section><h2>Choose your year</h2><div class="grid years">${years}</div></section>
+      <section>
+        <h2>Or search for a topic</h2>
+        <input id="home-search" class="big-search" type="search" placeholder="Try ‘fractions’, ‘Macbeth’ or ‘volcanoes’" aria-label="Search lessons and units" autocomplete="off">
+      </section>`);
+    document.getElementById("home-search").addEventListener("input", (e) => startSearch(e.target.value));
+  }
+
+  async function yearView(yearId) {
+    const idx = await loadIndex();
+    const year = idx.years.find((y) => y.id === yearId);
+    if (!year) return notFound();
+    const progs = (idx.yearProgrammes[yearId] || []).map((pid) => {
+      const p = idx.programmes[pid];
+      return `<a class="tile" href="#prog-${pid}"><strong>${esc(p.title)}</strong><span class="muted small">${plural(p.units.length, "unit")}</span></a>`;
+    }).join("");
+    const gcse = year.key_stage === "Key Stage 4"
+      ? `<p class="muted">GCSE subjects can come in versions for different exam boards or tiers. Ask your teacher which one you're doing.</p>` : "";
+    setView(`${crumbs(`Year ${year.number}`)}<div><h1>Year ${year.number} subjects</h1>${gcse}</div><div class="grid">${progs}</div>`, `Year ${year.number}`);
+  }
+
+  function unitRow(idx, uvId, progId) {
+    const u = idx.units[uvId];
+    const n = countDone(u.lessons);
+    const pct = u.lessons.length ? Math.round((100 * n) / u.lessons.length) : 0;
+    return `<a class="tile unit-row${pct === 100 ? " is-done" : ""}" href="${unitHash(uvId, progId)}">
+      <strong>${esc(u.name)}</strong>
+      <span class="muted small">${plural(u.lessons.length, "lesson")}${n ? ` · ${n} done` : ""}</span>
+      <span class="meter" aria-hidden="true"><span style="width:${pct}%"></span></span>
+    </a>`;
+  }
+
+  async function programmeView(progId) {
+    const idx = await loadIndex();
+    const p = idx.programmes[progId];
+    if (!p) return notFound();
+    const slots = p.units.map((slot) => slot.choice
+      ? `<li><div class="choice"><p><strong>${esc(slot.choice)}</strong> <span class="muted small">· your school picks one</span></p>${slot.options.map((id) => unitRow(idx, id, progId)).join("")}</div></li>`
+      : `<li>${unitRow(idx, slot.options[0], progId)}</li>`).join("");
+    setView(`
+      ${crumbs(`<a href="#year-${p.year_id}">Year ${p.year}</a>`, esc(p.title))}
+      <div><h1>${esc(p.title)} <span class="muted">Year ${p.year}</span></h1>
+      <p class="muted">Units are listed in the order they're usually taught.</p></div>
+      <ol class="units">${slots}</ol>`, `${p.title} Year ${p.year}`);
+  }
+
+  async function unitView(uvId, progId) {
+    const data = await unitData(uvId);
+    if (!data) return notFound();
+    const idx = state.index;
+    const { unit, chunk } = data;
+    const p = progId ? idx.programmes[progId] : null;
+    const n = countDone(unit.lessons);
+    const lessons = unit.lessons.map((lid) =>
+      `<li class="${done.has(String(lid)) ? "is-done" : ""}"><a href="${lessonHash(lid, uvId, progId)}">${esc(chunk.lessons[lid].name)}</a></li>`).join("");
+    const prior = unit.prior.length
+      ? `<section><h2>Before you start, you should know…</h2><ul class="plain">${unit.prior.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></section>` : "";
+    const why = unit.why ? `<details><summary>Why are we learning this now?</summary><p>${esc(unit.why)}</p></details>` : "";
+    const threads = unit.threads.length
+      ? `<section><h2>Big ideas</h2><div class="tags">${unit.threads.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div></section>` : "";
+    const quiz = unit.mistakes.length
+      ? `<a class="btn block" href="#check-unit-${uvId}">Test yourself: ${plural(unit.mistakes.length, "common mistake")}</a>` : "";
+    setView(`
+      ${crumbs(...(p ? [`<a href="#year-${p.year_id}">Year ${p.year}</a>`, `<a href="#prog-${progId}">${esc(p.title)}</a>`] : []), esc(unit.name))}
+      <div><h1>${esc(unit.name)}</h1>${unit.description ? `<p class="lead">${esc(unit.description)}</p>` : ""}</div>
+      <div class="split">
+        <section>
+          <div><h2>Lessons</h2><p class="muted small">${n ? `${n} of ${unit.lessons.length} lessons done` : `${plural(unit.lessons.length, "lesson")}, in teaching order`}</p></div>
+          <ol class="lessons">${lessons}</ol>
+        </section>
+        <aside>${quiz}${prior}${why}${threads}</aside>
+      </div>`, unit.name);
+  }
+
+  async function lessonView(lessonId, uvId, progId) {
+    const data = await lessonData(lessonId);
+    if (!data) return notFound();
+    const { lesson } = data;
+    const idx = state.index;
+    const home = idx.search.find((row) => row[0] === lessonId);
+    uvId = uvId && idx.units[uvId] ? uvId : home ? home[2] : null;
+    const u = uvId ? idx.units[uvId] : null;
+    let prev = null, next = null;
+    if (u) {
+      const i = u.lessons.indexOf(lessonId);
+      prev = i > 0 ? u.lessons[i - 1] : null;
+      next = i >= 0 && i + 1 < u.lessons.length ? u.lessons[i + 1] : null;
+    }
+    const points = lesson.points.length
+      ? `<section><h2>Key learning points</h2><ul class="plain">${lesson.points.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></section>` : "";
+    const keywords = lesson.keywords.length
+      ? `<section><h2>Keywords</h2><dl class="keywords">${lesson.keywords.map(([k, d]) => `<div><dt>${esc(k)}</dt><dd>${esc(d)}</dd></div>`).join("")}</dl></section>` : "";
+    const quiz = lesson.mistakes.length
+      ? `<a class="btn block" href="#check-lesson-${lessonId}${uvId ? `-u-${uvId}` : ""}">Spot the mistake (${lesson.mistakes.length})</a>` : "";
+    const pager = u ? `<nav class="pager">
+        ${prev ? `<a href="${lessonHash(prev, uvId, progId)}">← Previous lesson</a>` : "<span></span>"}
+        ${next ? `<a href="${lessonHash(next, uvId, progId)}">Next lesson →</a>` : `<a href="${unitHash(uvId, progId)}">Back to the unit</a>`}
+      </nav>` : "";
+    setView(`
+      ${crumbs(...(u ? [`<a href="${unitHash(uvId, progId)}">${esc(u.name)}</a>`] : []), esc(lesson.name))}
+      <h1>${esc(lesson.name)}</h1>
+      <label class="done-toggle"><input id="done-toggle" type="checkbox" ${done.has(String(lessonId)) ? "checked" : ""}> I've done this lesson</label>
+      ${lesson.outcome ? `<section class="outcome"><h2>By the end you'll be able to…</h2><p>${esc(lesson.outcome)}</p></section>` : ""}
+      <div class="split"><div>${points}</div><aside>${quiz}${keywords}</aside></div>
+      ${pager}`, lesson.name);
+    document.getElementById("done-toggle").addEventListener("change", (e) => setDone(lessonId, e.target.checked));
+  }
+
+  // ---------- spot the mistake ----------
+  async function checkView(scope, id, uvId) {
+    let title, back, chunk, ids;
+    if (scope === "unit") {
+      const data = await unitData(id);
+      if (!data) return notFound();
+      ({ chunk } = data);
+      title = data.unit.name; ids = data.unit.mistakes; back = unitHash(id);
+    } else {
+      const data = await lessonData(id);
+      if (!data) return notFound();
+      ({ chunk } = data);
+      title = data.lesson.name; ids = data.lesson.mistakes; back = lessonHash(id, uvId);
+    }
+    state.quiz = { scope, id, uvId, title, back, chunk, cards: ids.map((m) => chunk.mistakes[m]), i: 0, results: [], answer: null };
+    setView(`
+      ${crumbs(`<a href="${back}">${esc(title)}</a>`, "Spot the mistake")}
+      <div><h1>Spot the mistake</h1>
+      <p class="muted">These are things people often get wrong in <strong>${esc(title)}</strong>. Decide whether each one is true or false, then see how to get it right.</p></div>
+      <div id="quiz"></div>`, `Spot the mistake · ${title}`);
+    renderCard();
+  }
+
+  function renderCard() {
+    const q = state.quiz;
+    const box = document.getElementById("quiz");
+    if (!box) return;
+    const asked = q.results.filter((r) => r !== "s").length;
+    const score = q.results.filter((r) => r === "r").length;
+    const dots = `<div class="progress-dots" aria-hidden="true">${q.cards.map((_, k) =>
+      `<span class="${q.results[k] || ""}${k === q.i && q.i < q.cards.length ? " now" : ""}"></span>`).join("")}</div>`;
+    const scoreText = asked ? `Score ${score}/${asked}` : "";
+
+    if (!q.cards.length) {
+      box.innerHTML = `<p class="notice">There are no common mistakes listed for this yet.</p>`;
+      return;
+    }
+    if (q.i >= q.cards.length) {
+      box.innerHTML = `<article class="card">
+        <h2>All done!</h2>
+        ${asked ? `<p>You got <strong>${score} out of ${asked}</strong> true-or-false questions right.</p>` : ""}
+        ${dots}
+        <div class="actions"><button class="btn" id="again" type="button">Start again</button><a class="btn ghost" href="${q.back}">Back to ${esc(q.title)}</a></div>
+      </article>`;
+      document.getElementById("again").addEventListener("click", () => { q.i = 0; q.results = []; q.answer = null; renderCard(); });
+      return;
+    }
+
+    const card = q.cards[q.i];
+    const lessonName = q.chunk.lessons[card.lesson] ? q.chunk.lessons[card.lesson].name : "";
+    const meta = `<div class="meta"><span>Card ${q.i + 1} of ${q.cards.length}</span><span>${scoreText}</span></div>${dots}`;
+
+    if (q.answer === null) {
+      box.innerHTML = card.belief
+        ? `<article class="card">${meta}<p class="eyebrow">True or false?</p><p class="claim">${esc(card.belief)}</p>
+            <div class="actions"><button class="btn" data-choice="true" type="button">True</button><button class="btn" data-choice="false" type="button">False</button></div></article>`
+        : `<article class="card">${meta}<p class="eyebrow">A common mistake</p><p class="claim">${esc(card.statement)}</p>
+            <div class="actions"><button class="btn" data-choice="reveal" type="button">Show how to get it right</button></div></article>`;
+      box.querySelectorAll("[data-choice]").forEach((b) => b.addEventListener("click", () => {
+        const c = b.dataset.choice;
+        // Every card is a misconception, so "False" is always the right answer.
+        q.answer = c;
+        q.results[q.i] = c === "reveal" ? "s" : c === "false" ? "r" : "w";
+        renderCard();
+      }));
+      return;
+    }
+
+    const result = q.results[q.i];
+    const cls = result === "r" ? " right" : result === "w" ? " wrong" : "";
+    const verdict = result === "r" ? `<p class="verdict">Correct, it's false.</p>`
+      : result === "w" ? `<p class="verdict">Not quite. It's actually false.</p>` : "";
+    const claim = card.belief && result !== "s" ? `<p class="claim struck">${esc(card.belief)}</p>` : `<p class="claim">${esc(card.statement)}</p>`;
+    const lessonLink = lessonName
+      ? `<p class="muted small">Learn more in the lesson: <a href="${lessonHash(card.lesson, q.scope === "unit" ? q.id : q.uvId)}">${esc(lessonName)}</a></p>` : "";
+    box.innerHTML = `<article class="card${cls}">${meta}${verdict}${claim}
+      <div><h3>How to get it right</h3><p>${esc(card.correction)}</p>${lessonLink}</div>
+      <div class="actions"><button class="btn" id="next" type="button">${q.i + 1 < q.cards.length ? "Next card →" : "See my score"}</button></div></article>`;
+    const nextBtn = document.getElementById("next");
+    nextBtn.addEventListener("click", () => { q.i += 1; q.answer = null; renderCard(); });
+    nextBtn.focus({ preventScroll: true });
+  }
+
+  // ---------- search ----------
+  function startSearch(value) {
+    state.query = value;
+    headerSearch.value = value;
+    if (location.hash !== "#search") location.hash = "search";
+    else renderResults();
+  }
+
+  async function searchView() {
+    await loadIndex();
+    setView(`<div><h1>Search</h1><p class="muted">Search Year 7–11 units and lessons by name or keyword.</p></div>
+      <input id="search-page" class="big-search" type="search" aria-label="Search lessons and units" autocomplete="off" placeholder="Try ‘fractions’, ‘Macbeth’ or ‘volcanoes’">
+      <div id="results"></div>`, "Search");
+    const input = document.getElementById("search-page");
+    input.value = state.query;
+    input.addEventListener("input", (e) => { state.query = e.target.value; headerSearch.value = e.target.value; renderResults(); });
+    if (document.activeElement !== headerSearch) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    renderResults();
+  }
+
+  function renderResults() {
+    const box = document.getElementById("results");
+    const input = document.getElementById("search-page");
+    if (!box) return;
+    if (input && input.value !== state.query) input.value = state.query;
+    const q = state.query.trim().toLowerCase();
+    if (q.length < 2) { box.innerHTML = ""; return; }
+    const idx = state.index;
+    const units = Object.entries(idx.units).filter(([, u]) => u.name.toLowerCase().includes(q));
+    const seen = new Set();
+    const uniqueUnits = units.filter(([, u]) => !seen.has(u.name) && seen.add(u.name))
+      .sort((a, b) => a[1].name.localeCompare(b[1].name)).slice(0, 20);
+    const nameHits = [], keywordHits = [];
+    for (const row of idx.search) {
+      if (row[1].toLowerCase().includes(q)) nameHits.push(row);
+      else if (row[3].toLowerCase().includes(q)) keywordHits.push(row);
+    }
+    const lessons = nameHits.concat(keywordHits).slice(0, 30);
+    if (!uniqueUnits.length && !lessons.length) {
+      box.innerHTML = `<p class="muted">Nothing found for “${esc(state.query)}”. Try a shorter or different word.</p>`;
+      return;
+    }
+    box.innerHTML = `
+      ${uniqueUnits.length ? `<section><h2>Units</h2><ul class="results">${uniqueUnits.map(([id, u]) =>
+        `<li><a href="${unitHash(id)}">${esc(u.name)}</a>${u.year ? ` <span class="muted">· Year ${u.year}</span>` : ""}</li>`).join("")}</ul></section>` : ""}
+      ${lessons.length ? `<section><h2>Lessons</h2><ul class="results">${lessons.map(([id, name, uv]) =>
+        `<li><a href="${lessonHash(id, uv)}">${esc(name)}</a> <span class="muted">· ${esc(idx.units[uv].name)}</span></li>`).join("")}</ul></section>` : ""}`;
+  }
+
+  headerSearch.addEventListener("input", (e) => startSearch(e.target.value));
+
+  // ---------- routing ----------
+  function notFound() {
+    setView(`${crumbs("Not found")}<h1>We couldn't find that page</h1><p><a href="#home">Go back to the start</a></p>`, "Not found");
+  }
+
+  async function route() {
+    const h = location.hash.replace(/^#/, "");
+    if (h !== "search") { headerSearch.value = ""; state.query = ""; }
+    let m;
+    try {
+      if (!h || h === "home") await homeView();
+      else if (h === "search") await searchView();
+      else if ((m = h.match(/^year-(\d+)$/))) await yearView(+m[1]);
+      else if ((m = h.match(/^prog-(\d+)$/))) await programmeView(+m[1]);
+      else if ((m = h.match(/^unit-(\d+)(?:-p-(\d+))?$/))) await unitView(+m[1], m[2] ? +m[2] : null);
+      else if ((m = h.match(/^lesson-(\d+)(?:-u-(\d+))?(?:-p-(\d+))?$/))) await lessonView(+m[1], m[2] ? +m[2] : null, m[3] ? +m[3] : null);
+      else if ((m = h.match(/^check-(unit|lesson)-(\d+)(?:-u-(\d+))?$/))) await checkView(m[1], +m[2], m[3] ? +m[3] : null);
+      else notFound();
+    } catch (err) {
+      setView(`<h1>Something went wrong</h1><p>${esc(err.message)}</p><p><a href="#home">Go back to the start</a></p>`);
+    }
+    if (h !== "search") window.scrollTo(0, 0);
+  }
+
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>
