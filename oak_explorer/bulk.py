@@ -49,3 +49,50 @@ def load_extras(folder: Path) -> dict[str, dict]:
             if found := lesson_extras(lesson):
                 extras.setdefault(lesson["lessonSlug"], found)
     return extras
+
+
+def lesson_summary(lesson: dict) -> dict:
+    """Outcome, key learning points, keywords and misconceptions from a lesson record.
+
+    Oak's bulk files and its GET /lessons/{lesson}/summary endpoint use the same field names.
+    """
+    return {
+        "outcome": lesson.get("pupilLessonOutcome") or "",
+        "keyLearningPoints": [k["keyLearningPoint"] for k in lesson.get("keyLearningPoints") or []],
+        "keywords": [[k["keyword"], k.get("description") or ""] for k in lesson.get("lessonKeywords") or []],
+        "misconceptions": [
+            [m["misconception"], m.get("response") or ""]
+            for m in lesson.get("misconceptionsAndCommonMistakes") or []
+        ],
+    }
+
+
+def subject_from_bulk(data: dict, title: str, years) -> dict:
+    """A bulk file as a subject in the shape scripts/fetch_subjects.py saves (one programme per year)."""
+    lessons = {lesson["lessonSlug"]: lesson for lesson in data["lessons"]}
+    programmes = []
+    for year in years:
+        units = []
+        for unit in data["sequence"]:  # already in teaching order
+            if unit.get("year") != year:
+                continue
+            unit_lessons = [
+                {"slug": ul["lessonSlug"], "title": ul["lessonTitle"],
+                 "summary": lesson_summary(lessons[ul["lessonSlug"]]) if ul["lessonSlug"] in lessons else None}
+                for ul in sorted(unit.get("unitLessons") or [], key=lambda x: x.get("lessonOrder") or 0)
+                if ul.get("state") == "published"
+            ]
+            if unit_lessons:
+                units.append({
+                    "slug": unit["unitSlug"],
+                    "title": unit["unitTitle"],
+                    "description": unit.get("description") or "",
+                    "whyThisWhyNow": unit.get("whyThisWhyNow") or "",
+                    "priorKnowledge": unit.get("priorKnowledgeRequirements") or [],
+                    "threads": [t["title"] for t in unit.get("threads") or []],
+                    "lessons": unit_lessons,
+                })
+        if units:
+            programmes.append({"slug": f"{data['sequenceSlug']}-year-{year}", "year": year, "units": units})
+    return {"slug": data["sequenceSlug"].removesuffix("-secondary").removesuffix("-primary"),
+            "title": title, "programmes": programmes}

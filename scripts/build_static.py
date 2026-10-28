@@ -33,13 +33,16 @@ sys.path.insert(0, str(ROOT))
 
 from oak_explorer import db  # noqa: E402
 from oak_explorer.api_subjects import convert_subject  # noqa: E402
-from oak_explorer.bulk import load_extras  # noqa: E402
+from oak_explorer.bulk import load_extras, subject_from_bulk  # noqa: E402
 from oak_explorer.quiz import convert_quiz, math_segments, to_mathml  # noqa: E402
 
 OUT = ROOT / "site"
 QUIZZES = ROOT / "data" / "oak-quizzes.json"
 API_SUBJECTS = ROOT / "data" / "oak-subjects.json"
 API_CHUNK_BASE = 100  # data files for API subjects are s-101.json, s-102.json, ...
+# Subjects the ontology lacks, built from Oak bulk-download files when present (Years 7–9 for now).
+BULK_SUBJECTS = {"religious-education": "Religious Education", "rshe-pshe": "RSHE (PSHE)"}
+BULK_SUBJECT_YEARS = (7, 8, 9)
 IMAGE_CACHE = ROOT / "data" / "quiz-images"
 
 # static_site/index.html is a page body (the shape claude.ai hosting expects). Static hosts serve
@@ -104,6 +107,11 @@ def build() -> None:
     api_subjects = (
         json.loads(API_SUBJECTS.read_text(encoding="utf-8"))["subjects"] if API_SUBJECTS.exists() else []
     )
+    for slug, title in BULK_SUBJECTS.items():
+        path = ROOT / "data" / f"{slug}-secondary.json"
+        if path.exists() and not any(s["slug"] == slug for s in api_subjects):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            api_subjects.append(subject_from_bulk(data, title, BULK_SUBJECT_YEARS))
     images = ImageStore()
     quiz_lessons: set[int] = set()
     extras = load_extras(ROOT / "data")

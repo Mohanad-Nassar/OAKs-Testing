@@ -8,6 +8,9 @@ learning points, keywords and misconceptions. Quizzes come from fetch_quizzes.py
 Roughly 1 request per unit plus 1 per lesson (a few hundred for both subjects) against
 the 1,000-per-hour limit. Needs OAK_API_KEY.
 
+If you have Oak's bulk-download file for a subject in data/, the build uses that instead and
+this script isn't needed for it.
+
 Usage:
     uv run python scripts/fetch_subjects.py
     uv run python scripts/fetch_subjects.py --subjects religious-education --years 7 8 9
@@ -22,6 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from oak_explorer.bulk import lesson_summary as summary_fields  # noqa: E402
 from oak_explorer.oak_api import OakAPI, OakAPIError, Unavailable  # noqa: E402
 
 DEST = ROOT / "data" / "oak-subjects.json"
@@ -31,17 +35,9 @@ DEFAULT_YEARS = (7, 8, 9)
 
 def lesson_summary(api: OakAPI, slug: str) -> dict | None:
     try:
-        s = api.get_one(f"/lessons/{slug}/summary")
+        return summary_fields(api.get_one(f"/lessons/{slug}/summary"))
     except Unavailable:  # e.g. blocked for copyright: keep the title, skip the detail
         return None
-    return {
-        "outcome": s.get("pupilLessonOutcome") or "",
-        "keyLearningPoints": [k["keyLearningPoint"] for k in s.get("keyLearningPoints") or []],
-        "keywords": [[k["keyword"], k.get("description") or ""] for k in s.get("lessonKeywords") or []],
-        "misconceptions": [
-            [m["misconception"], m.get("response") or ""] for m in s.get("misconceptionsAndCommonMistakes") or []
-        ],
-    }
 
 
 def fetch_subject(api: OakAPI, slug: str, title: str, years) -> dict:
