@@ -18,6 +18,8 @@
   --right-soft: #e0f2e5;
   --wrong: #b02a20;
   --wrong-soft: #fbe6e3;
+  --warn: #8a5300;
+  --warn-soft: #fdf1da;
   --font: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif;
   --radius: 14px;
 }
@@ -26,6 +28,7 @@
     --bg: #121714; --surface: #1b221e; --fg: #e9efe9; --muted: #9fada4; --line: #2e3a33;
     --accent: #74c98a; --accent-soft: #213428; --on-accent: #0c1a10;
     --right: #82d897; --right-soft: #1d3424; --wrong: #ff8f84; --wrong-soft: #3b2220;
+    --warn: #f0c36d; --warn-soft: #362a13;
     color-scheme: dark;
   }
 }
@@ -33,6 +36,7 @@
   --bg: #121714; --surface: #1b221e; --fg: #e9efe9; --muted: #9fada4; --line: #2e3a33;
   --accent: #74c98a; --accent-soft: #213428; --on-accent: #0c1a10;
   --right: #82d897; --right-soft: #1d3424; --wrong: #ff8f84; --wrong-soft: #3b2220;
+    --warn: #f0c36d; --warn-soft: #362a13;
   color-scheme: dark;
 }
 
@@ -173,6 +177,7 @@ dl.keywords dd { margin: 0; color: var(--muted); }
 .quiz-link .score { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
 .quiz-link .actions { grid-column: 1 / -1; margin-top: 6px; }
 .btn.small { padding: 8px 14px; font-size: .9rem; min-width: 0; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Board view: a whole quiz on one screen for the class. Font size and column count are fitted by script. */
 .board {
@@ -212,6 +217,15 @@ dl.keywords dd { margin: 0; color: var(--muted); }
 .bq.revealed li.correct .letter { color: var(--right); }
 .bq.current { outline: 3px solid var(--accent); outline-offset: -1px; }
 .board-tools .step { font-variant-numeric: tabular-nums; }
+.board-notes {
+  position: absolute; z-index: 2; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  width: min(440px, calc(100% - 32px)); max-height: 65%; overflow-y: auto; display: grid; gap: 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / .22); font-size: 1rem; line-height: 1.5;
+}
+.board-notes h2 { font-size: 1rem; margin: 0; }
+.board-notes ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; }
+.board-notes .close-notes { justify-self: end; }
 .board-tools button:disabled { opacity: .4; cursor: default; }
 .qscore { font-size: .8rem; font-weight: 600; color: var(--accent); margin-left: 6px; font-variant-numeric: tabular-nums; }
 .qtext { font-size: 1.2rem; line-height: 1.45; margin: 0; }
@@ -246,6 +260,13 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
 .feedback p { margin: 0; }
 .big-score { font-size: 2.6rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; margin: 0; }
 
+.lesson-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.oak-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; text-decoration: none; }
+.oak-link:hover { border-color: var(--accent); }
+.guidance { border-left: 4px solid var(--warn); background: var(--warn-soft); border-radius: 10px; padding: 12px 16px; display: grid; gap: 6px; }
+.guidance h2 { font-size: 1rem; margin: 0; color: var(--warn); }
+.guidance ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 4px; }
+.guidance p { margin: 0; }
 .notice { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; }
 
 @media (prefers-reduced-motion: reduce) { .tile { transition: none; } .tile:hover { transform: none; } }
@@ -388,6 +409,15 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
   function setView(html, title) {
     view.innerHTML = html;
     document.title = title ? `${title} · Oak Explorer` : "Oak Explorer";
+  }
+  const oakUrl = (slug) => `https://www.thenational.academy/teachers/lessons/${encodeURIComponent(slug)}`;
+  const oakLink = (lesson, cls = "oak-link") => lesson.slug
+    ? `<a class="${cls}" href="${oakUrl(lesson.slug)}" target="_blank" rel="noopener">View on Oak <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens Oak National Academy in a new tab)</span></a>` : "";
+  function guidanceHtml(lesson, heading = "h2") {
+    if (!lesson.guidance && !lesson.supervision) return "";
+    const items = (lesson.guidance || []).map((g) => `<li><strong>${esc(g.label)}.</strong> ${esc(g.description)}</li>`).join("");
+    return `<section class="guidance" aria-label="Content guidance"><${heading}>⚠ Content guidance</${heading}>
+      ${items ? `<ul>${items}</ul>` : ""}${lesson.supervision ? `<p><strong>${esc(lesson.supervision)}.</strong></p>` : ""}</section>`;
   }
   function unitHash(uvId, progId) { return `#unit-${uvId}${progId ? `-p-${progId}` : ""}`; }
   function lessonHash(lessonId, uvId, progId) {
@@ -552,7 +582,11 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
     setView(`
       ${crumbs(...(u ? [`<a href="${unitHash(uvId, progId)}">${esc(u.name)}</a>`] : []), esc(lesson.name))}
       <h1>${esc(lesson.name)}</h1>
-      <label class="done-toggle"><input id="done-toggle" type="checkbox" ${done.has(String(lessonId)) ? "checked" : ""}> I've done this lesson</label>
+      <div class="lesson-actions">
+        <label class="done-toggle"><input id="done-toggle" type="checkbox" ${done.has(String(lessonId)) ? "checked" : ""}> I've done this lesson</label>
+        ${oakLink(lesson)}
+      </div>
+      ${guidanceHtml(lesson)}
       ${lesson.outcome ? `<section class="outcome"><h2>By the end you'll be able to…</h2><p>${esc(lesson.outcome)}</p></section>` : ""}
       <div class="split"><div>${quizzes}${points}</div><aside>${quiz}${keywords}</aside></div>
       ${pager}`, lesson.name);
@@ -851,6 +885,7 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
     state.board = {
       lessonId, kind, suffix,
       revealed: same ? state.board.revealed : 0, // answers shown, in question order
+      notesOpen: same ? state.board.notesOpen : false, // teacher notes stay off the projector until asked for
       // Fixed for this showing, so letters stay put when answers are revealed or the screen resizes.
       layouts: same ? state.board.layouts : questions.map((q) => ({
         match: q.type === "match" ? shuffle(q.pairs.map((_, k) => k)) : null,
@@ -893,6 +928,7 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
     const other = b.kind === "starter" ? "exit" : "starter";
     const hasOther = lesson.quiz[other] && lesson.quiz[other].length;
     const canFullscreen = document.fullscreenEnabled && document.documentElement.requestFullscreen;
+    const hasNotes = !!(lesson.tips || lesson.guidance || lesson.supervision);
     board.innerHTML = `
       <div class="board-bar">
         <div class="board-title"><span class="eyebrow">${b.kind === "starter" ? "Starter" : "Exit"} quiz · ${plural(questions.length, "question")}</span><strong>${esc(lesson.name)}</strong></div>
@@ -901,11 +937,22 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
           <button type="button" id="board-prev" aria-label="Hide the last answer">◀</button>
           <button type="button" id="board-next" class="step" title="Right arrow, down arrow or space">Next answer ▶</button>
           <button type="button" id="board-answers"></button>
+          ${hasNotes ? `<button type="button" id="board-notes-toggle" aria-pressed="${b.notesOpen}" aria-controls="board-notes" title="Teacher tips and content guidance (T)">${lesson.guidance || lesson.supervision ? "⚠ " : ""}Teacher notes</button>` : ""}
+          ${oakLink(lesson, "")}
           ${canFullscreen ? `<button type="button" id="board-full">${document.fullscreenElement ? "Exit full screen" : "Full screen"}</button>` : ""}
           <a href="#lesson-${b.lessonId}${b.suffix}">Close</a>
         </div>
       </div>
-      <div class="board-grid" id="board-grid">${questions.map((q, k) => boardQuestion(q, k, b.layouts[k])).join("")}</div>`;
+      <div class="board-grid" id="board-grid">${questions.map((q, k) => boardQuestion(q, k, b.layouts[k])).join("")}</div>
+      ${hasNotes ? `<aside class="board-notes" id="board-notes" aria-label="Teacher notes" ${b.notesOpen ? "" : "hidden"}>
+        <button type="button" class="btn small ghost close-notes" id="board-notes-close">Hide notes</button>
+        ${guidanceHtml(lesson, "h2")}
+        ${lesson.tips ? `<section><h2>Teacher tips</h2><ul>${lesson.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></section>` : ""}
+      </aside>` : ""}`;
+    if (hasNotes) {
+      document.getElementById("board-notes-toggle").addEventListener("click", toggleNotes);
+      document.getElementById("board-notes-close").addEventListener("click", toggleNotes);
+    }
     document.getElementById("board-answers").addEventListener("click", () => revealTo(b.revealed === questions.length ? 0 : questions.length));
     document.getElementById("board-next").addEventListener("click", () => revealTo(b.revealed + 1));
     document.getElementById("board-prev").addEventListener("click", () => revealTo(b.revealed - 1));
@@ -938,8 +985,18 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
     document.getElementById("board-prev").disabled = b.revealed === 0;
   }
 
+  // The notes panel floats over the board, so opening it never changes the fitted layout.
+  function toggleNotes() {
+    const b = state.board, panel = document.getElementById("board-notes");
+    if (!b || !panel) return;
+    b.notesOpen = !b.notesOpen;
+    panel.hidden = !b.notesOpen;
+    document.getElementById("board-notes-toggle").setAttribute("aria-pressed", String(b.notesOpen));
+  }
+
   document.addEventListener("keydown", (e) => {
     if (board.hidden || !state.board || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === "t" || e.key === "T") { e.preventDefault(); toggleNotes(); return; }
     const step = { ArrowRight: 1, ArrowDown: 1, " ": 1, PageDown: 1, Enter: 1, ArrowLeft: -1, ArrowUp: -1, PageUp: -1, Backspace: -1 }[e.key];
     if (e.key === "Enter" && e.target.closest && e.target.closest("button, a")) return;
     if (step) { e.preventDefault(); revealTo(state.board.revealed + step); }

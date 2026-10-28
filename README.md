@@ -68,6 +68,14 @@ uv run python scripts/fetch_quizzes.py
 uv run python scripts/build_static.py
 ```
 
+### Oak bulk-download files
+
+Files from Oak's [bulk download](https://open-api.thenational.academy/bulk-download)
+(e.g. `data/spanish-secondary.json`) are picked up by the build automatically. They add teacher
+tips (shown in the board view's "Teacher notes" panel, toggled with the button or `T`) and
+content guidance with the supervision level (shown as a warning on the lesson page). Every lesson
+also links to its page on Oak's website.
+
 Questions that need an image are skipped unless the image can be downloaded from
 `cloudinary-res.thenational.academy`.
 

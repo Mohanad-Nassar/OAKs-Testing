@@ -9,7 +9,8 @@ progress tracking in the browser. This script exports the KS3–KS4 data it need
     site/img/                 quiz images
 
 Quizzes come from data/oak-quizzes.json (see scripts/fetch_quizzes.py) when it exists, and
-subjects the ontology lacks (RE, RSHE/PSHE) from data/oak-subjects.json (scripts/fetch_subjects.py).
+subjects the ontology lacks (RE, RSHE/PSHE) from data/oak-subjects.json (scripts/fetch_subjects.py),
+and teacher tips and content guidance from Oak bulk-download files in data/ (e.g. spanish-secondary.json).
 
 The output is a complete static site: publish the site/ folder as-is (Netlify uses
 netlify.toml at the repo root).
@@ -32,6 +33,7 @@ sys.path.insert(0, str(ROOT))
 
 from oak_explorer import db  # noqa: E402
 from oak_explorer.api_subjects import convert_subject  # noqa: E402
+from oak_explorer.bulk import load_extras  # noqa: E402
 from oak_explorer.quiz import convert_quiz, math_segments, to_mathml  # noqa: E402
 
 OUT = ROOT / "site"
@@ -104,6 +106,13 @@ def build() -> None:
     )
     images = ImageStore()
     quiz_lessons: set[int] = set()
+    extras = load_extras(ROOT / "data")
+
+    def add_details(chunk: dict, lesson_id: int, slug: str) -> None:
+        """The lesson's Oak slug (for its link), bulk-file extras and quiz."""
+        chunk["lessons"][lesson_id]["slug"] = slug
+        chunk["lessons"][lesson_id].update(extras.get(slug, {}))
+        attach_quiz(chunk, lesson_id, slug)
 
     def attach_quiz(chunk: dict, lesson_id: int, slug: str) -> None:
         if slug not in raw_quizzes:
@@ -201,7 +210,7 @@ def build() -> None:
                     "keywords": [[k["name"], k["description"]] for k in lesson["keywords"]],
                     "mistakes": [m["id"] for m in lesson_mistakes],
                 }
-                attach_quiz(chunk, lesson_id, slug)
+                add_details(chunk, lesson_id, slug)
 
         year_ids = {y["number"]: y["id"] for y in years}
         for n, subject in enumerate(api_subjects, start=1):
@@ -217,7 +226,7 @@ def build() -> None:
                     lesson_chunk.setdefault(lesson_id, chunk_id)
                     lesson_home.setdefault(lesson_id, uv_id)
             for lesson_id, slug in records["lesson_slugs"].items():
-                attach_quiz(records["chunk"], lesson_id, slug)
+                add_details(records["chunk"], lesson_id, slug)
         for year_id in year_programmes:
             year_programmes[year_id].sort(key=lambda pid: programmes[pid]["title"])
 
