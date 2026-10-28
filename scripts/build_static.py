@@ -6,14 +6,19 @@ progress tracking in the browser. This script exports the KS3–KS4 data it need
     site/index.html
     site/data/index.json      years, programmes, unit list and search index
     site/data/s-<id>.json     unit, lesson and misconception detail, one file per subject
+    site/img/                 quiz images
+
+Quizzes come from data/oak-quizzes.json (see scripts/fetch_quizzes.py) when it exists.
 
 Usage:
     uv run python scripts/build_static.py
 """
 
+import hashlib
 import json
 import shutil
 import sys
+import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
@@ -21,11 +26,42 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from oak_explorer import db  # noqa: E402
+from oak_explorer.quiz import convert_quiz  # noqa: E402
 
 OUT = ROOT / "site"
+QUIZZES = ROOT / "data" / "oak-quizzes.json"
+IMAGE_CACHE = ROOT / "data" / "quiz-images"
+
+
+class ImageStore:
+    """Downloads quiz images once into data/quiz-images/ and serves them from site/img/."""
+
+    def __init__(self) -> None:
+        self.used: set[str] = set()
+        self.failed: set[str] = set()
+
+    def __call__(self, url: str) -> str | None:
+        name = hashlib.sha1(url.encode()).hexdigest()[:16] + Path(url).suffix.lower()
+        cached = IMAGE_CACHE / name
+        if not cached.exists():
+            if url in self.failed:
+                return None
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "oak-explorer/0.1"})
+                with urllib.request.urlopen(req, timeout=20) as resp:
+                    data = resp.read()
+            except OSError:
+                self.failed.add(url)
+                return None
+            IMAGE_CACHE.mkdir(parents=True, exist_ok=True)
+            cached.write_bytes(data)
+        self.used.add(name)
+        return f"img/{name}"
 
 
 def build() -> None:
+    raw_quizzes = json.loads(QUIZZES.read_text(encoding="utf-8")) if QUIZZES.exists() else {}
+    images = ImageStore()
     with db.connect() as conn:
         years = db.year_groups(conn)
         programmes, year_programmes = {}, {}
@@ -67,6 +103,7 @@ def build() -> None:
 
         chunks: dict[int, dict] = defaultdict(lambda: {"units": {}, "lessons": {}, "mistakes": {}})
         units_index, lesson_chunk, lesson_home = {}, {}, {}
+        quiz_lessons: set[int] = set()
         for uv_id in unit_ids:
             chunk_id = subject_of[uv_id]
             chunk = chunks[chunk_id]
@@ -96,6 +133,8 @@ def build() -> None:
                 if lesson_id in chunk["lessons"]:
                     continue
                 lesson = db.lesson(conn, lesson_id)
+                slug = conn.execute("SELECT slug FROM lesson WHERE id = ?", (lesson_id,)).fetchone()[0]
+                quiz = convert_quiz(raw_quizzes[slug], images) if slug in raw_quizzes else None
                 lesson_mistakes = db.misconceptions_for_lesson(conn, lesson_id)
                 for m in lesson_mistakes:
                     chunk["mistakes"][m["id"]] = _mistake(m)
@@ -106,6 +145,16 @@ def build() -> None:
                     "keywords": [[k["name"], k["description"]] for k in lesson["keywords"]],
                     "mistakes": [m["id"] for m in lesson_mistakes],
                 }
+                if quiz and (quiz["starter"] or quiz["exit"]):
+                    chunk["lessons"][lesson_id]["quiz"] = quiz
+                    quiz_lessons.add(lesson_id)
+
+        for uv_id, meta in units_index.items():
+            meta["quizzes"] = sum(lid in quiz_lessons for lid in meta["lessons"])
+        for prog in programmes.values():
+            prog["quizzes"] = sum(
+                units_index[uv]["quizzes"] for slot in prog["units"] for uv in slot["options"]
+            )
 
         search = []
         for lesson_id, chunk_id in lesson_chunk.items():
@@ -131,12 +180,19 @@ def build() -> None:
     )
     for chunk_id, chunk in chunks.items():
         _write(OUT / "data" / f"s-{chunk_id}.json", chunk)
+    if images.used:
+        (OUT / "img").mkdir()
+        for name in images.used:
+            shutil.copy(IMAGE_CACHE / name, OUT / "img" / name)
 
     total = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())
     print(
         f"Built {OUT}: {len(programmes)} programmes, {len(units_index)} units, "
-        f"{len(lesson_chunk)} lessons, {len(chunks) + 2} files, {total / 1e6:.1f} MB"
+        f"{len(lesson_chunk)} lessons ({len(quiz_lessons)} with quizzes), "
+        f"{len(chunks) + 2 + len(images.used)} files, {total / 1e6:.1f} MB"
     )
+    if images.failed:
+        print(f"Skipped questions needing {len(images.failed)} images that couldn't be downloaded")
 
 
 def _mistake(m: dict) -> dict:

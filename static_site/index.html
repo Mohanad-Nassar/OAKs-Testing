@@ -149,6 +149,44 @@ dl.keywords dd { margin: 0; color: var(--muted); }
 .progress-dots span.s { background: var(--muted); }
 .progress-dots span.now { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+.badge { justify-self: start; display: inline-block; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.feature { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: grid; gap: 12px; }
+.feature .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.quiz-links { display: grid; gap: 10px; }
+.quiz-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; }
+.quiz-link .score { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
+.qscore { font-size: .8rem; font-weight: 600; color: var(--accent); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.qtext { font-size: 1.2rem; line-height: 1.45; margin: 0; }
+.qtext pre, .opt pre, .match-row pre { margin: .5rem 0 0; font-size: .95rem; }
+pre { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-x: auto; white-space: pre; }
+code { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; }
+:not(pre) > code { background: var(--accent-soft); padding: 1px 5px; border-radius: 5px; }
+.blank { display: inline-block; min-width: 4em; border-bottom: 2px solid var(--fg); }
+.qimg { background: #fff; border-radius: 10px; padding: 6px; justify-self: start; }
+.opts { display: grid; gap: 8px; }
+.opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; min-width: 0; }
+.opt > div { min-width: 0; }
+.opt input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+.opt:has(input:checked) { border-color: var(--accent); }
+.opt.is-right, .match-row.is-right, .order-list li.is-right { border-color: var(--right); background: var(--right-soft); }
+.opt.is-wrong, .match-row.is-wrong, .order-list li.is-wrong { border-color: var(--wrong); background: var(--wrong-soft); }
+.short-input { font: inherit; font-size: 1.1rem; padding: 10px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); width: min(100%, 420px); }
+.match-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px 14px; align-items: center; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; }
+@media (max-width: 560px) { .match-row { grid-template-columns: minmax(0, 1fr); } }
+.match-row select { font: inherit; width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.order-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: ord; }
+.order-list li { counter-increment: ord; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); }
+.order-list li::before { content: counter(ord); font-weight: 600; color: var(--muted); text-align: center; }
+.order-list .moves { display: flex; gap: 4px; }
+.order-list .moves button { font: inherit; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+.order-list .moves button:disabled { opacity: .35; cursor: default; }
+.feedback { border-radius: 12px; padding: 12px 14px; background: var(--bg); display: grid; gap: 6px; }
+.feedback.right { background: var(--right-soft); }
+.feedback.wrong { background: var(--wrong-soft); }
+.feedback ul, .feedback ol { margin: 0; padding-left: 1.4rem; }
+.feedback p { margin: 0; }
+.big-score { font-size: 2.6rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; margin: 0; }
+
 .notice { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; }
 
 @media (prefers-reduced-motion: reduce) { .tile { transition: none; } .tile:hover { transform: none; } }
@@ -229,8 +267,32 @@ dl.keywords dd { margin: 0; color: var(--muted); }
   }
   const countDone = (ids) => ids.filter((id) => done.has(String(id))).length;
 
+  const SCORES = "oak-explorer:quiz-scores";
+  function loadScores() {
+    try { return JSON.parse(localStorage.getItem(SCORES) || "{}") || {}; }
+    catch (e) { return {}; }
+  }
+  let scores = loadScores();
+  function saveScore(lessonId, kind, score, total) {
+    const key = `${lessonId}:${kind}`;
+    const prev = scores[key];
+    if (!prev || score / total >= prev.score / prev.total) scores[key] = { score, total };
+    try { localStorage.setItem(SCORES, JSON.stringify(scores)); } catch (e) { /* not saved */ }
+  }
+  const bestScore = (lessonId, kind) => scores[`${lessonId}:${kind}`];
+
   // ---------- helpers ----------
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Oak quiz text: ```code``` blocks, `inline code` and {{}} blanks.
+  function rich(text) {
+    return String(text ?? "").split("```").map((part, i) => {
+      if (i % 2) return `<pre><code>${esc(part.replace(/^\n+|\n+$/g, ""))}</code></pre>`;
+      return esc(part)
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\{\{\s*\}\}/g, '<span class="blank" aria-label="blank"></span>')
+        .replace(/\n/g, "<br>");
+    }).join("");
+  }
   const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const crumbs = (...parts) =>
     `<nav class="crumbs" aria-label="Breadcrumb">${["<a href=\"#home\">Home</a>", ...parts].join("<span aria-hidden=\"true\">›</span>")}</nav>`;
@@ -259,6 +321,7 @@ dl.keywords dd { margin: 0; color: var(--muted); }
         <p>Pick your year to see your subjects, units and lessons, then test yourself on the mistakes people often make.</p>
       </section>
       ${progress}
+      ${quizFeature(idx)}
       <section><h2>Choose your year</h2><div class="grid years">${years}</div></section>
       <section>
         <h2>Or search for a topic</h2>
@@ -267,13 +330,25 @@ dl.keywords dd { margin: 0; color: var(--muted); }
     document.getElementById("home-search").addEventListener("input", (e) => startSearch(e.target.value));
   }
 
+  function quizFeature(idx) {
+    const progs = Object.entries(idx.programmes).filter(([, p]) => p.quizzes);
+    if (!progs.length) return "";
+    return `<section class="feature">
+      <span class="badge">New</span>
+      <div><h2>Starter and exit quizzes</h2>
+      <p class="muted">Real Oak quiz questions for each lesson, marked as you go. Available now for:</p></div>
+      <div class="grid">${progs.map(([pid, p]) =>
+        `<a class="tile" href="#prog-${pid}"><strong>${esc(p.title)}</strong><span class="muted small">Year ${p.year} · ${plural(p.quizzes, "lesson")} with quizzes</span></a>`).join("")}</div>
+    </section>`;
+  }
+
   async function yearView(yearId) {
     const idx = await loadIndex();
     const year = idx.years.find((y) => y.id === yearId);
     if (!year) return notFound();
     const progs = (idx.yearProgrammes[yearId] || []).map((pid) => {
       const p = idx.programmes[pid];
-      return `<a class="tile" href="#prog-${pid}"><strong>${esc(p.title)}</strong><span class="muted small">${plural(p.units.length, "unit")}</span></a>`;
+      return `<a class="tile" href="#prog-${pid}">${p.quizzes ? '<span class="badge">Quizzes</span>' : ""}<strong>${esc(p.title)}</strong><span class="muted small">${plural(p.units.length, "unit")}</span></a>`;
     }).join("");
     const gcse = year.key_stage === "Key Stage 4"
       ? `<p class="muted">GCSE subjects can come in versions for different exam boards or tiers. Ask your teacher which one you're doing.</p>` : "";
@@ -312,8 +387,11 @@ dl.keywords dd { margin: 0; color: var(--muted); }
     const { unit, chunk } = data;
     const p = progId ? idx.programmes[progId] : null;
     const n = countDone(unit.lessons);
-    const lessons = unit.lessons.map((lid) =>
-      `<li class="${done.has(String(lid)) ? "is-done" : ""}"><a href="${lessonHash(lid, uvId, progId)}">${esc(chunk.lessons[lid].name)}</a></li>`).join("");
+    const lessons = unit.lessons.map((lid) => {
+      const best = bestScore(lid, "exit");
+      const badge = best ? `<span class="qscore" title="Best exit quiz score">${best.score}/${best.total}</span>` : "";
+      return `<li class="${done.has(String(lid)) ? "is-done" : ""}"><a href="${lessonHash(lid, uvId, progId)}">${esc(chunk.lessons[lid].name)}</a>${badge}</li>`;
+    }).join("");
     const prior = unit.prior.length
       ? `<section><h2>Before you start, you should know…</h2><ul class="plain">${unit.prior.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></section>` : "";
     const why = unit.why ? `<details><summary>Why are we learning this now?</summary><p>${esc(unit.why)}</p></details>` : "";
@@ -353,6 +431,17 @@ dl.keywords dd { margin: 0; color: var(--muted); }
       ? `<section><h2>Keywords</h2><dl class="keywords">${lesson.keywords.map(([k, d]) => `<div><dt>${esc(k)}</dt><dd>${esc(d)}</dd></div>`).join("")}</dl></section>` : "";
     const quiz = lesson.mistakes.length
       ? `<a class="btn block" href="#check-lesson-${lessonId}${uvId ? `-u-${uvId}` : ""}">Spot the mistake (${lesson.mistakes.length})</a>` : "";
+    const quizLink = (kind, label, hint) => {
+      const n = lesson.quiz && lesson.quiz[kind] ? lesson.quiz[kind].length : 0;
+      if (!n) return "";
+      const best = bestScore(lessonId, kind);
+      return `<a class="tile quiz-link" href="#quiz-${lessonId}-${kind}${uvId ? `-u-${uvId}` : ""}${uvId && progId ? `-p-${progId}` : ""}">
+        <strong>${label}</strong><span class="score">${best ? `Best ${best.score}/${best.total}` : `${n} questions`}</span>
+        <span class="muted small">${hint}</span></a>`;
+    };
+    const quizzes = lesson.quiz ? `<section><h2>Quizzes</h2><div class="quiz-links">
+        ${quizLink("starter", "Starter quiz", "Check what you remember before the lesson")}
+        ${quizLink("exit", "Exit quiz", "Test what you've learned after the lesson")}</div></section>` : "";
     const pager = u ? `<nav class="pager">
         ${prev ? `<a href="${lessonHash(prev, uvId, progId)}">← Previous lesson</a>` : "<span></span>"}
         ${next ? `<a href="${lessonHash(next, uvId, progId)}">Next lesson →</a>` : `<a href="${unitHash(uvId, progId)}">Back to the unit</a>`}
@@ -362,7 +451,7 @@ dl.keywords dd { margin: 0; color: var(--muted); }
       <h1>${esc(lesson.name)}</h1>
       <label class="done-toggle"><input id="done-toggle" type="checkbox" ${done.has(String(lessonId)) ? "checked" : ""}> I've done this lesson</label>
       ${lesson.outcome ? `<section class="outcome"><h2>By the end you'll be able to…</h2><p>${esc(lesson.outcome)}</p></section>` : ""}
-      <div class="split"><div>${points}</div><aside>${quiz}${keywords}</aside></div>
+      <div class="split"><div>${quizzes}${points}</div><aside>${quiz}${keywords}</aside></div>
       ${pager}`, lesson.name);
     document.getElementById("done-toggle").addEventListener("change", (e) => setDone(lessonId, e.target.checked));
   }
@@ -450,6 +539,180 @@ dl.keywords dd { margin: 0; color: var(--muted); }
     nextBtn.focus({ preventScroll: true });
   }
 
+  // ---------- starter and exit quizzes ----------
+  function shuffle(list) {
+    const a = list.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  // Shuffle, but never hand back the list already in its correct order.
+  function scramble(list) {
+    if (list.length < 2) return list.slice();
+    let a;
+    do { a = shuffle(list); } while (a.every((x, i) => x === list[i]));
+    return a;
+  }
+  const norm = (s) => String(s).toLowerCase().replace(/[“”‘’"']/g, "").replace(/\s+/g, " ").trim().replace(/[.!?]+$/, "");
+
+  async function quizView(lessonId, kind, uvId, progId) {
+    const data = await lessonData(lessonId);
+    if (!data || !data.lesson.quiz || !data.lesson.quiz[kind] || !data.lesson.quiz[kind].length) return notFound();
+    const { lesson } = data;
+    const back = lessonHash(lessonId, uvId, progId);
+    const label = kind === "starter" ? "Starter quiz" : "Exit quiz";
+    state.run = { lessonId, kind, back, label, lesson, questions: lesson.quiz[kind], i: 0, results: [], checked: false };
+    setView(`
+      ${crumbs(`<a href="${back}">${esc(lesson.name)}</a>`, label)}
+      <div><h1>${label}</h1><p class="muted">${esc(lesson.name)}</p></div>
+      <div id="run"></div>`, `${label} · ${lesson.name}`);
+    startQuestion();
+  }
+
+  function startQuestion() {
+    const r = state.run;
+    const q = r.questions[r.i];
+    r.checked = false;
+    if (q) {
+      if (q.type === "match") r.choices = shuffle(q.pairs.map((p) => p[1]));
+      if (q.type === "order") r.order = scramble(q.items.map((_, k) => k));
+    }
+    renderQuestion();
+  }
+
+  function runMeta() {
+    const r = state.run;
+    const score = r.results.filter(Boolean).length;
+    const dots = `<div class="progress-dots" aria-hidden="true">${r.questions.map((_, k) =>
+      `<span class="${r.results[k] === true ? "r" : r.results[k] === false ? "w" : ""}${k === r.i ? " now" : ""}"></span>`).join("")}</div>`;
+    return `<div class="meta"><span>Question ${r.i + 1} of ${r.questions.length}</span><span>${r.results.length ? `Score ${score}/${r.results.length}` : ""}</span></div>${dots}`;
+  }
+
+  const optionHtml = (o) => o.img ? `<img class="qimg" src="${esc(o.img)}" alt="">` : rich(o.text);
+
+  function renderQuestion() {
+    const r = state.run;
+    const box = document.getElementById("run");
+    if (!box) return;
+    if (r.i >= r.questions.length) return renderQuizEnd(box);
+    const q = r.questions[r.i];
+    let body = "";
+    if (q.type === "mc") {
+      const multi = q.correct.length > 1;
+      body = `${multi ? `<p class="eyebrow">Choose ${q.correct.length} answers</p>` : ""}<div class="opts" role="${multi ? "group" : "radiogroup"}">${q.options.map((o, k) =>
+        `<label class="opt" data-k="${k}"><input type="${multi ? "checkbox" : "radio"}" name="mc" value="${k}"><div>${optionHtml(o)}</div></label>`).join("")}</div>`;
+    } else if (q.type === "short") {
+      body = `<label class="eyebrow" for="short">Type your answer</label><input id="short" class="short-input" type="text" autocomplete="off" spellcheck="false">`;
+    } else if (q.type === "match") {
+      body = `<p class="eyebrow">Match each one</p><div class="opts">${q.pairs.map((p, k) => `
+        <div class="match-row" data-k="${k}"><div>${rich(p[0])}</div>
+        <select aria-label="Match for ${esc(p[0])}"><option value="">Choose…</option>${r.choices.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select></div>`).join("")}</div>`;
+    } else if (q.type === "order") {
+      body = `<p class="eyebrow">Use the arrows to put these in order</p><ol class="order-list">${r.order.map((item, k) => `
+        <li data-item="${item}"><div>${rich(q.items[item])}</div><div class="moves">
+          <button type="button" data-move="-1" data-pos="${k}" aria-label="Move up" ${k === 0 ? "disabled" : ""}>↑</button>
+          <button type="button" data-move="1" data-pos="${k}" aria-label="Move down" ${k === r.order.length - 1 ? "disabled" : ""}>↓</button></div></li>`).join("")}</ol>`;
+    }
+    box.innerHTML = `<article class="card">${runMeta()}
+      <div class="qtext">${rich(q.q)}</div>
+      ${q.img ? `<img class="qimg" src="${esc(q.img)}" alt="">` : ""}
+      ${body}
+      <div id="feedback"></div>
+      <div class="actions"><button class="btn" id="check" type="button">Check answer</button></div></article>`;
+
+    box.querySelectorAll("[data-move]").forEach((b) => b.addEventListener("click", () => {
+      const pos = +b.dataset.pos, to = pos + +b.dataset.move;
+      [r.order[pos], r.order[to]] = [r.order[to], r.order[pos]];
+      renderQuestion();
+      const again = box.querySelector(`[data-pos="${to}"][data-move="${b.dataset.move}"]`) || box.querySelector(`[data-pos="${to}"]`);
+      if (again) again.focus();
+    }));
+    const shortInput = document.getElementById("short");
+    if (shortInput) {
+      shortInput.focus({ preventScroll: true });
+      shortInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("check").click(); } });
+    }
+    document.getElementById("check").addEventListener("click", checkAnswer);
+  }
+
+  function checkAnswer() {
+    const r = state.run;
+    const q = r.questions[r.i];
+    const box = document.getElementById("run");
+    if (r.checked) { r.i += 1; startQuestion(); return; }
+
+    let right = false, reveal = "";
+    if (q.type === "mc") {
+      const picked = [...box.querySelectorAll("input[name=mc]:checked")].map((x) => +x.value);
+      if (!picked.length) return hint("Choose an answer first.");
+      right = picked.length === q.correct.length && picked.every((k) => q.correct.includes(k));
+      box.querySelectorAll(".opt").forEach((el) => {
+        const k = +el.dataset.k, isCorrect = q.correct.includes(k), isPicked = picked.includes(k);
+        if (isCorrect) el.classList.add("is-right");
+        else if (isPicked) el.classList.add("is-wrong");
+      });
+      if (!right) reveal = `<p>The correct answer${q.correct.length > 1 ? "s are" : " is"} highlighted in green.</p>`;
+    } else if (q.type === "short") {
+      const value = document.getElementById("short").value;
+      if (!value.trim()) return hint("Type an answer first.");
+      right = q.accept.some((a) => norm(a) === norm(value));
+      if (!right) reveal = `<p>Accepted answer${q.accept.length > 1 ? "s" : ""}: ${q.accept.map((a) => `<strong>${esc(a)}</strong>`).join(", ")}</p>`;
+    } else if (q.type === "match") {
+      const rows = [...box.querySelectorAll(".match-row")];
+      if (rows.some((row) => !row.querySelector("select").value)) return hint("Choose a match for every row first.");
+      right = true;
+      const fixes = [];
+      rows.forEach((row) => {
+        const pair = q.pairs[+row.dataset.k];
+        const ok = row.querySelector("select").value === pair[1];
+        row.classList.add(ok ? "is-right" : "is-wrong");
+        if (!ok) { right = false; fixes.push(`<li><strong>${esc(pair[0])}</strong> → ${esc(pair[1])}</li>`); }
+      });
+      if (!right) reveal = `<p>Correct matches:</p><ul>${fixes.join("")}</ul>`;
+    } else if (q.type === "order") {
+      right = r.order.every((item, k) => item === k);
+      box.querySelectorAll(".order-list li").forEach((li, k) => li.classList.add(+li.dataset.item === k ? "is-right" : "is-wrong"));
+      if (!right) reveal = `<p>The correct order is:</p><ol>${q.items.map((x) => `<li>${rich(x)}</li>`).join("")}</ol>`;
+    }
+
+    r.checked = true;
+    r.results[r.i] = right;
+    box.querySelectorAll("input, select, [data-move]").forEach((el) => { el.disabled = true; });
+    const fb = document.getElementById("feedback");
+    fb.className = `feedback ${right ? "right" : "wrong"}`;
+    fb.innerHTML = `<p class="verdict">${right ? "Correct!" : "Not quite."}</p>${reveal}`;
+    const btn = document.getElementById("check");
+    btn.textContent = r.i + 1 < r.questions.length ? "Next question →" : "See my score";
+    btn.focus({ preventScroll: true });
+    box.querySelector(".meta span:last-child").textContent = `Score ${r.results.filter(Boolean).length}/${r.results.length}`;
+  }
+
+  function hint(text) {
+    const fb = document.getElementById("feedback");
+    fb.className = "feedback";
+    fb.innerHTML = `<p>${esc(text)}</p>`;
+  }
+
+  function renderQuizEnd(box) {
+    const r = state.run;
+    const score = r.results.filter(Boolean).length, total = r.questions.length;
+    saveScore(r.lessonId, r.kind, score, total);
+    const best = bestScore(r.lessonId, r.kind);
+    const pct = score / total;
+    const message = pct === 1 ? "Perfect score!" : pct >= 0.7 ? "Great work." : pct >= 0.4 ? "Good effort. Have another look at the lesson and try again." : "Keep going. Read through the lesson, then try again.";
+    const markDone = r.kind === "exit" && !done.has(String(r.lessonId))
+      ? `<button class="btn ghost" id="mark-done" type="button">Mark lesson as done</button>` : "";
+    const next = r.kind === "starter" ? `<a class="btn ghost" href="${r.back}">Go to the lesson</a>` : `<a class="btn ghost" href="${r.back}">Back to the lesson</a>`;
+    box.innerHTML = `<article class="card">
+      <p class="eyebrow">${r.label} complete</p>
+      <p class="big-score">${score}/${total}</p>
+      <p>${message}${best && (best.score !== score || best.total !== total) ? ` Your best is ${best.score}/${best.total}.` : ""}</p>
+      <div class="progress-dots" aria-hidden="true">${r.results.map((x) => `<span class="${x ? "r" : "w"}"></span>`).join("")}</div>
+      <div class="actions"><button class="btn" id="retry" type="button">Try again</button>${markDone}${next}</div></article>`;
+    document.getElementById("retry").addEventListener("click", () => { r.i = 0; r.results = []; startQuestion(); });
+    const md = document.getElementById("mark-done");
+    if (md) md.addEventListener("click", () => { setDone(r.lessonId, true); md.textContent = "Marked as done ✓"; md.disabled = true; });
+  }
+
   // ---------- search ----------
   function startSearch(value) {
     state.query = value;
@@ -518,6 +781,7 @@ dl.keywords dd { margin: 0; color: var(--muted); }
       else if ((m = h.match(/^unit-(\d+)(?:-p-(\d+))?$/))) await unitView(+m[1], m[2] ? +m[2] : null);
       else if ((m = h.match(/^lesson-(\d+)(?:-u-(\d+))?(?:-p-(\d+))?$/))) await lessonView(+m[1], m[2] ? +m[2] : null, m[3] ? +m[3] : null);
       else if ((m = h.match(/^check-(unit|lesson)-(\d+)(?:-u-(\d+))?$/))) await checkView(m[1], +m[2], m[3] ? +m[3] : null);
+      else if ((m = h.match(/^quiz-(\d+)-(starter|exit)(?:-u-(\d+))?(?:-p-(\d+))?$/))) await quizView(+m[1], m[2], m[3] ? +m[3] : null, m[4] ? +m[4] : null);
       else notFound();
     } catch (err) {
       setView(`<h1>Something went wrong</h1><p>${esc(err.message)}</p><p><a href="#home">Go back to the start</a></p>`);
