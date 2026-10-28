@@ -54,6 +54,20 @@ uv run python scripts/fetch_quizzes.py
 uv run python scripts/build_static.py
 ```
 
+### Subjects from Oak's Open API (RE, RSHE/PSHE)
+
+The curriculum ontology doesn't cover Religious Education or RSHE/PSHE yet, so
+`scripts/fetch_subjects.py` builds them from the API instead: programmes per year, units in
+teaching order (with prior knowledge and threads) and lessons (outcome, key learning points,
+keywords, misconceptions). It saves `data/oak-subjects.json`, which the static build merges in
+alongside the other subjects; their quizzes come from `fetch_quizzes.py` as usual.
+
+```bash
+uv run python scripts/fetch_subjects.py    # Years 7–9 of RE and RSHE/PSHE, a few hundred requests
+uv run python scripts/fetch_quizzes.py
+uv run python scripts/build_static.py
+```
+
 Questions that need an image are skipped unless the image can be downloaded from
 `cloudinary-res.thenational.academy`.
 
