@@ -4,20 +4,21 @@ The page (static_site/index.html) does browsing, search, the mistakes check and
 progress tracking in the browser. This script exports the KS3–KS4 data it needs:
 
     site/index.html
+    site/lessons/             interactive lessons, copied from static_site/lessons/
     site/data/index.json      years, programmes, unit list and search index
     site/data/s-<id>.json     unit, lesson and misconception detail, one file per subject
     site/img/                 quiz images
 
 Quizzes come from data/oak-quizzes.json (see scripts/fetch_quizzes.py) when it exists, and
 subjects the ontology lacks (RE, RSHE/PSHE) from data/oak-subjects.json (scripts/fetch_subjects.py),
-and teacher tips and content guidance from Oak bulk-download files in data/ (e.g. spanish-secondary.json).
+and teacher tips, content guidance and lesson keywords from Oak bulk-download files in data/ (e.g. spanish-secondary.json).
 
 The output is a complete static site: publish the site/ folder as-is (Netlify uses
 netlify.toml at the repo root).
 
 Usage:
     uv run python scripts/build_static.py              # data and page
-    uv run python scripts/build_static.py --page-only  # just refresh site/index.html
+    uv run python scripts/build_static.py --page-only  # just refresh site/index.html and site/lessons/
 """
 
 import hashlib
@@ -74,6 +75,9 @@ def write_page() -> None:
     split = page.index('<header class="site">')
     html = DOCUMENT.format(head=page[:split].strip(), body=page[split:].strip())
     (OUT / "index.html").write_text(html, encoding="utf-8")
+    # Interactive lessons are complete documents, published as they are.
+    shutil.rmtree(OUT / "lessons", ignore_errors=True)
+    shutil.copytree(ROOT / "static_site" / "lessons", OUT / "lessons")
 
 
 class ImageStore:

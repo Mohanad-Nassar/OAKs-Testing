@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive Year 9 Computing lesson: how sound is represented with binary data, with Oak's starter and exit quizzes.">
+<title>Sound as binary · Oak Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap">
+<style>
+/* One step on screen at a time: a sticky bar with the step list, the step's animation, then its quick check. */
+:root {
+  --bg: #f4f6f1; --surface: #ffffff; --fg: #18211b; --muted: #59665d; --line: #d6ddd3;
+  --accent: #1f6b35; --accent-soft: #e1eedf; --on-accent: #ffffff;
+  --right: #1d7339; --right-soft: #e0f2e5; --wrong: #b02a20; --wrong-soft: #fbe6e3;
+  --warn: #8a5300; --warn-soft: #fdf1da;
+  --wave: #2f6fb0; --signal: #c0561b; --left: #2f6fb0; --rightch: #b8336a;
+  --font: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121714; --surface: #1b221e; --fg: #e9efe9; --muted: #9fada4; --line: #2e3a33;
+    --accent: #74c98a; --accent-soft: #213428; --on-accent: #0c1a10;
+    --right: #82d897; --right-soft: #1d3424; --wrong: #ff8f84; --wrong-soft: #3b2220;
+    --warn: #f0c36d; --warn-soft: #362a13;
+    --wave: #7fb4ec; --signal: #f0a066; --left: #7fb4ec; --rightch: #f08cb5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121714; --surface: #1b221e; --fg: #e9efe9; --muted: #9fada4; --line: #2e3a33;
+  --accent: #74c98a; --accent-soft: #213428; --on-accent: #0c1a10;
+  --right: #82d897; --right-soft: #1d3424; --wrong: #ff8f84; --wrong-soft: #3b2220;
+  --warn: #f0c36d; --warn-soft: #362a13;
+  --wave: #7fb4ec; --signal: #f0a066; --left: #7fb4ec; --rightch: #f08cb5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 17px/1.6 var(--font); }
+a { color: var(--accent); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; font-weight: 600; margin: 0; }
+h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); }
+h2 { font-size: clamp(1.25rem, 3vw, 1.6rem); }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.wrap { max-width: 980px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+header.bar { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.bar .wrap { display: grid; gap: 6px; padding-block: 10px; }
+.bar-top { display: flex; gap: 8px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.bar-top a { font-size: .9rem; }
+.bar-title { font-weight: 600; font-size: .95rem; }
+.steps { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; overflow-x: auto; scrollbar-width: none; }
+.steps::-webkit-scrollbar { display: none; }
+.steps button {
+  font: inherit; font-size: .75rem; white-space: nowrap; cursor: pointer; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--muted);
+}
+.steps button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.steps button.seen:not([aria-current]) { color: var(--fg); border-color: var(--accent); }
+.progress { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.progress span { display: block; height: 100%; background: var(--accent); transition: width .4s ease; }
+
+main.wrap { padding-block: 22px 40px; }
+.step { display: grid; gap: 18px; animation: rise .45s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.eyebrow { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 600; }
+.lead { font-size: 1.05rem; max-width: 68ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 12px; min-width: 0; }
+.say { display: grid; gap: 8px; max-width: 70ch; }
+.say p strong { color: var(--accent); }
+.two { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .two { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; } }
+canvas.viz { width: 100%; display: block; border-radius: 10px; background: var(--bg); touch-action: pan-y; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.controls label { display: grid; gap: 2px; font-size: .9rem; flex: 1 1 220px; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.readout { font-variant-numeric: tabular-nums; font-weight: 600; }
+.big-num { font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+
+.btn {
+  display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+  font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; min-height: 44px;
+  padding: 10px 18px; border-radius: var(--radius); border: 0; background: var(--accent); color: var(--on-accent);
+}
+.btn.ghost { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+.btn.small { padding: 6px 12px; min-height: 36px; font-size: .9rem; }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: default; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { font: inherit; font-size: .9rem; padding: 8px 14px; border: 0; background: var(--surface); color: var(--fg); cursor: pointer; min-height: 40px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+
+.nav { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 6px; }
+
+/* Quick checks and quiz questions */
+.check { border: 2px dashed var(--accent); }
+.check h3::before { content: "✓ "; color: var(--accent); }
+.options { display: grid; gap: 8px; }
+.option {
+  font: inherit; text-align: left; cursor: pointer; padding: 10px 14px; border-radius: 10px; min-height: 44px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg); display: flex; gap: 10px; align-items: baseline;
+}
+.option .letter { font-weight: 700; color: var(--muted); min-width: 1.2em; }
+.option:hover:not(:disabled) { border-color: var(--accent); }
+.option[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.option.is-right { background: var(--right-soft); border-color: var(--right); }
+.option.is-wrong { background: var(--wrong-soft); border-color: var(--wrong); }
+.option:disabled { cursor: default; }
+.feedback { border-radius: 10px; padding: 10px 14px; animation: rise .3s ease both; }
+.feedback.right { background: var(--right-soft); border-left: 4px solid var(--right); }
+.feedback.wrong { background: var(--wrong-soft); border-left: 4px solid var(--wrong); }
+.answer-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.answer-row input { font: inherit; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-width: 0; flex: 1 1 160px; }
+.quiz-meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+.score { font-size: 2.4rem; font-weight: 700; color: var(--accent); }
+
+dl.keywords { margin: 0; display: grid; gap: 10px; }
+dl.keywords dt { font-weight: 600; }
+dl.keywords dd { margin: 0; color: var(--muted); }
+.note { background: var(--warn-soft); border-radius: 10px; padding: 10px 14px; font-size: .9rem; }
+
+/* Microphone → bits → speaker pipeline */
+.pipe { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
+.pipe .stage { background: var(--bg); border: 2px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 6px; justify-items: center; text-align: center; transition: border-color .3s, transform .3s; }
+.pipe .stage.lit { border-color: var(--accent); transform: translateY(-3px); }
+.pipe .stage canvas { width: 100%; height: 56px; }
+.pipe .stage svg { width: 56px; height: 56px; }
+.pipe .stage strong { font-size: .9rem; }
+.pipe .stage span { font-size: .78rem; color: var(--muted); }
+.bits-ticker { font-family: var(--mono); font-size: .85rem; height: 56px; width: 100%; overflow: hidden; display: grid; align-content: center; color: var(--accent); word-break: break-all; line-height: 1.2; }
+
+/* Binary chips */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--mono); font-size: .85rem; padding: 3px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--fg); animation: pop .35s ease both; }
+.chip b { color: var(--muted); font-weight: 400; margin-right: 4px; font-family: var(--font); font-size: .75rem; }
+@keyframes pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+.stream { font-family: var(--mono); font-size: .95rem; background: var(--bg); border-radius: 10px; padding: 10px 12px; min-height: 3.2em; word-break: break-all; line-height: 1.5; }
+.stream span { animation: pop .35s ease both; display: inline; }
+.stream span:nth-child(odd) { color: var(--accent); }
+
+/* Calculator */
+.calc-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+.calc-grid label { display: grid; gap: 4px; font-size: .9rem; }
+.calc-grid select, .calc-grid input { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; }
+.chain { display: grid; gap: 6px; }
+.chain .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 8px 12px; border-radius: 10px; background: var(--bg); animation: rise .35s ease both; }
+.chain .row .op { font-size: .9rem; color: var(--muted); }
+.chain .row .val { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+.chain .row.total { background: var(--accent-soft); }
+.chain .row.total .val { color: var(--accent); font-size: 1.15rem; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <div class="bar-top">
+      <a id="back-link" href="../#lesson-3348">← Lesson page</a>
+      <span class="bar-title">Representing sound with binary data · Year 9 Computing</span>
+    </div>
+    <ol class="steps" id="steps" aria-label="Lesson steps"></ol>
+    <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<footer class="wrap small muted" style="padding-bottom: 32px;">
+  Lesson content, keywords and quizzes from Oak National Academy's lesson
+  <a href="https://www.thenational.academy/teachers/lessons/representing-sound-with-binary-data" target="_blank" rel="noopener">Representing sound with binary data</a>,
+  under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.
+  Animations and sounds are made in your browser. This is a test project, not an official Oak product.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  const LESSON_ID = 3348;
+  const main = document.getElementById("main");
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = (n) => Math.round(n).toLocaleString("en-GB");
+  const fmtDec = (n) => n.toLocaleString("en-GB", { maximumFractionDigits: 2 });
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  // The keywords as the lesson's own video and Oak's bulk download define them. ("Channel" is about audio here:
+  // the curriculum ontology's shared keyword list gives a netball definition by mistake.)
+  const KEYWORDS = [
+    ["sample", "the measurement of a sound wave at a point in time"],
+    ["sample rate", "the number of samples captured per second"],
+    ["sample resolution (bit depth)", "the number of bits used to store each sample, which determines how accurately the sample is represented"],
+    ["channel", "a single stream of audio used to reproduce sound"],
+  ];
+
+  // ---------- Oak lesson data (quizzes, key points) from the site's data files ----------
+  let lessonPromise = null;
+  function loadLesson() {
+    if (!lessonPromise) {
+      lessonPromise = fetch("../data/index.json").then((r) => r.ok ? r.json() : Promise.reject(new Error(r.status)))
+        .then((idx) => fetch(`../data/s-${idx.lessonChunk[LESSON_ID]}.json`))
+        .then((r) => r.ok ? r.json() : Promise.reject(new Error(r.status)))
+        .then((chunk) => chunk.lessons[LESSON_ID])
+        .catch(() => null);
+    }
+    return lessonPromise;
+  }
+
+  // ---------- progress shared with the main site (this browser only) ----------
+  const DONE = "oak-explorer:done", SCORES = "oak-explorer:quiz-scores", SEEN = "oak-explorer:sound-lesson-step";
+  function readJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch (e) { return fallback; }
+  }
+  function writeJSON(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* not saved */ } }
+  function saveScore(kind, score, total) {
+    const scores = readJSON(SCORES, {}), key = `${LESSON_ID}:${kind}`, prev = scores[key];
+    if (!prev || score / total >= prev.score / prev.total) scores[key] = { score, total };
+    writeJSON(SCORES, scores);
+  }
+  function markDone(on) {
+    const done = new Set(readJSON(DONE, []).map(String));
+    on ? done.add(String(LESSON_ID)) : done.delete(String(LESSON_ID));
+    writeJSON(DONE, [...done]);
+  }
+  const isDone = () => readJSON(DONE, []).map(String).includes(String(LESSON_ID));
+
+  // ---------- audio (Web Audio, made on demand after a click) ----------
+  let audio = null, playing = null;
+  function ctx() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audio) audio = new AC();
+    if (audio.state === "suspended") audio.resume();
+    return audio;
+  }
+  function stopSound() {
+    if (playing) { try { playing.src.stop(); } catch (e) { /* already stopped */ } playing.onEnd && playing.onEnd(); playing = null; }
+  }
+  // Plays samples (made at the context's own rate). pan: number, or a function of progress 0..1 for a moving sound.
+  function playSamples(data, { pan = 0, gain = 0.25, onEnd } = {}) {
+    const ac = ctx();
+    if (!ac) { alert("Your browser can't play sounds made on the page."); return; }
+    stopSound();
+    const buf = ac.createBuffer(1, data.length, ac.sampleRate);
+    buf.copyToChannel ? buf.copyToChannel(data, 0) : buf.getChannelData(0).set(data);
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const g = ac.createGain(); g.gain.value = gain;
+    let node = src;
+    if (ac.createStereoPanner) {
+      const p = ac.createStereoPanner();
+      if (typeof pan === "function") {
+        const steps = 60, curve = new Float32Array(steps);
+        for (let i = 0; i < steps; i++) curve[i] = pan(i / (steps - 1));
+        p.pan.setValueCurveAtTime(curve, ac.currentTime, buf.duration);
+      } else p.pan.value = pan;
+      src.connect(p); node = p;
+    }
+    node.connect(g); g.connect(ac.destination);
+    const entry = { src, onEnd, start: ac.currentTime, duration: buf.duration };
+    src.onended = () => { if (playing === entry) { playing = null; onEnd && onEnd(); } };
+    playing = entry;
+    src.start();
+  }
+  const playProgress = () => playing && audio ? Math.min(1, (audio.currentTime - playing.start) / playing.duration) : null;
+
+  // A short tune with a few harmonics, at the audio context's rate (usually 44,100 or 48,000 samples a second).
+  let tuneCache = null;
+  function tune() {
+    const ac = ctx(); if (!ac) return null;
+    if (tuneCache && tuneCache.rate === ac.sampleRate) return tuneCache.data;
+    const rate = ac.sampleRate, notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 659.25, 523.25], len = 0.32;
+    const data = new Float32Array(Math.round(rate * len * notes.length));
+    notes.forEach((f, n) => {
+      const start = Math.round(n * len * rate), count = Math.round(len * rate);
+      for (let i = 0; i < count; i++) {
+        const t = i / rate, env = Math.min(1, t / 0.01) * Math.exp(-3.2 * t);
+        data[start + i] = env * (0.6 * Math.sin(2 * Math.PI * f * t) + 0.25 * Math.sin(4 * Math.PI * f * t) + 0.12 * Math.sin(6 * Math.PI * f * t));
+      }
+    });
+    let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v));
+    for (let i = 0; i < data.length; i++) data[i] = data[i] / peak * 0.95;
+    tuneCache = { rate, data };
+    return data;
+  }
+  // Keep one value per sample period: what a recording at that sample rate would hold.
+  function sampleAndHold(data, srcRate, rate) {
+    const out = new Float32Array(data.length), step = srcRate / rate;
+    for (let i = 0; i < data.length; i++) out[i] = data[Math.min(data.length - 1, Math.floor(Math.floor(i / step) * step))];
+    return out;
+  }
+  // Round each value to one of 2^bits levels between -1 and 1.
+  const quantiseValue = (v, bits) => { const top = 2 ** bits - 1; return Math.round((v + 1) / 2 * top) / top * 2 - 1; };
+  const levelOf = (v, bits) => Math.round((Math.max(-1, Math.min(1, v)) + 1) / 2 * (2 ** bits - 1));
+  function quantise(data, bits) { const out = new Float32Array(data.length); for (let i = 0; i < data.length; i++) out[i] = quantiseValue(data[i], bits); return out; }
+
+  // ---------- canvas helpers ----------
+  let animators = []; // redrawn on resize, and each frame while running (still ones only when their inputs change)
+  function setupCanvas(canvas, aspect) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || 600, h = Math.round(w * aspect);
+    canvas.style.height = `${h}px`;
+    if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+    const g = canvas.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { g, w, h };
+  }
+  function animate(draw, { always = false, still = false } = {}) {
+    const a = { draw, running: !still && (!reduceMotion || always) };
+    animators.push(a);
+    draw(0);
+    return a;
+  }
+  let t0 = performance.now();
+  function frame(now) {
+    const t = (now - t0) / 1000;
+    for (const a of animators) if (a.running) a.draw(t);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  window.addEventListener("resize", () => { for (const a of animators) a.draw((performance.now() - t0) / 1000); });
+
+  // The wave the sampling steps measure: two cycles of a 1 kHz tone with a 2 kHz overtone, over 2 milliseconds.
+  const WINDOW = 0.002;
+  const waveAt = (s) => 0.62 * Math.sin(2 * Math.PI * 1000 * s) + 0.3 * Math.sin(2 * Math.PI * 2000 * s + 0.8);
+  function drawAxes(g, w, h, pad) {
+    g.strokeStyle = css("--line"); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(pad, h / 2); g.lineTo(w - pad, h / 2); g.stroke();
+  }
+  function drawWave(g, w, h, pad, fn, color, width = 2.5, alpha = 1) {
+    g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = width; g.beginPath();
+    for (let x = pad; x <= w - pad; x++) {
+      const y = h / 2 - fn((x - pad) / (w - 2 * pad)) * (h / 2 - pad);
+      x === pad ? g.moveTo(x, y) : g.lineTo(x, y);
+    }
+    g.stroke(); g.globalAlpha = 1;
+  }
+
+  // ---------- quick checks ----------
+  // q: { q, options, correct, why } for multiple choice, or { q, answer, accept, why } for a typed number.
+  function quickCheck(q, idx) {
+    const id = `qc-${Math.random().toString(36).slice(2, 8)}`;
+    const box = document.createElement("section");
+    box.className = "panel check";
+    box.setAttribute("aria-labelledby", id);
+    const typed = q.options === undefined;
+    box.innerHTML = `<h3 id="${id}">Quick check${idx ? ` ${idx}` : ""}</h3><p>${q.q}</p>
+      ${typed
+        ? `<form class="answer-row"><label class="visually-hidden" for="${id}-in">Your answer</label><input id="${id}-in" inputmode="decimal" autocomplete="off" placeholder="Type a number"><button class="btn" type="submit">Check</button></form>`
+        : `<div class="options">${q.options.map((o, i) => `<button type="button" class="option" data-i="${i}"><span class="letter">${"ABCD"[i]}</span><span>${o}</span></button>`).join("")}</div>`}
+      <div class="fb" aria-live="polite"></div>`;
+    const fb = box.querySelector(".fb");
+    const show = (ok, extra = "") => {
+      fb.innerHTML = `<div class="feedback ${ok ? "right" : "wrong"}"><strong>${ok ? "Correct!" : "Not quite."}</strong> ${extra}${q.why ? ` ${q.why}` : ""}</div>`;
+    };
+    if (typed) {
+      box.querySelector("form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const raw = box.querySelector("input").value.replace(/[,\s]/g, "");
+        const n = Number(raw);
+        if (!raw || Number.isNaN(n)) { fb.innerHTML = `<div class="feedback wrong">Type a number, for example 12000.</div>`; return; }
+        show(n === q.answer, n === q.answer ? "" : `The answer is ${fmt(q.answer)}.`);
+      });
+    } else {
+      box.querySelectorAll(".option").forEach((btn) => btn.addEventListener("click", () => {
+        const pick = +btn.dataset.i, ok = pick === q.correct;
+        box.querySelectorAll(".option").forEach((b) => {
+          b.disabled = true;
+          if (+b.dataset.i === q.correct) b.classList.add("is-right");
+          else if (b === btn) b.classList.add("is-wrong");
+        });
+        show(ok, ok ? "" : `It's ${"ABCD"[q.correct]}.`);
+      }));
+    }
+    return box;
+  }
+
+  // ---------- Oak quizzes ----------
+  function shuffle(list) {
+    const a = list.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  // Oak quiz text can hold `code` and {{}} blanks.
+  const rich = (t) => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\{\{\s*\}\}/g, "_____");
+  async function oakQuiz(host, kind, onFinish) {
+    host.innerHTML = `<p class="muted">Loading Oak's ${kind} quiz…</p>`;
+    const lesson = await loadLesson();
+    const questions = lesson && lesson.quiz && (lesson.quiz[kind] || []).filter((q) => q.type === "mc" && !q.img);
+    if (!questions || !questions.length) {
+      host.innerHTML = `<div class="panel"><p>Oak's ${kind} quiz couldn't be loaded here. You can take it on the <a href="../#quiz-${LESSON_ID}-${kind}">lesson page</a>.</p></div>`;
+      return;
+    }
+    let n = 0, score = 0;
+    const order = questions.map((q) => shuffle(q.options.map((o, i) => i)));
+    function ask() {
+      const q = questions[n];
+      const multi = q.correct.length > 1;
+      host.innerHTML = `<div class="panel">
+        <div class="quiz-meta"><span>Question ${n + 1} of ${questions.length}</span><span>Score ${score}</span></div>
+        <h3>${rich(q.q)}</h3>${multi ? `<p class="muted small">Choose ${q.correct.length} answers.</p>` : ""}
+        <div class="options">${order[n].map((oi, k) => `<button type="button" class="option" aria-pressed="false" data-i="${oi}"><span class="letter">${"ABCDEF"[k]}</span><span>${rich(q.options[oi].text)}</span></button>`).join("")}</div>
+        <div class="fb" aria-live="polite"></div>
+        <div class="nav"><span></span><button type="button" class="btn" id="quiz-go" disabled>Check</button></div></div>`;
+      const go = host.querySelector("#quiz-go"), fb = host.querySelector(".fb");
+      const opts = [...host.querySelectorAll(".option")];
+      let checked = false;
+      opts.forEach((b) => b.addEventListener("click", () => {
+        if (checked) return;
+        if (!multi) opts.forEach((o) => o.setAttribute("aria-pressed", "false"));
+        b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+        go.disabled = !opts.some((o) => o.getAttribute("aria-pressed") === "true");
+      }));
+      go.addEventListener("click", () => {
+        if (!checked) {
+          checked = true;
+          const picked = opts.filter((o) => o.getAttribute("aria-pressed") === "true").map((o) => +o.dataset.i).sort();
+          const ok = picked.join() === q.correct.slice().sort().join();
+          if (ok) score++;
+          opts.forEach((o) => {
+            o.disabled = true;
+            const i = +o.dataset.i;
+            if (q.correct.includes(i)) o.classList.add("is-right");
+            else if (picked.includes(i)) o.classList.add("is-wrong");
+          });
+          fb.innerHTML = `<div class="feedback ${ok ? "right" : "wrong"}"><strong>${ok ? "Correct!" : "Not quite."}</strong>${ok ? "" : ` The right answer is highlighted.`}</div>`;
+          go.textContent = n + 1 < questions.length ? "Next question" : "See my score";
+          go.focus();
+        } else if (n + 1 < questions.length) { n++; ask(); host.querySelector(".option").focus(); }
+        else {
+          saveScore(kind, score, questions.length);
+          host.innerHTML = `<div class="panel" style="justify-items:start">
+            <p class="eyebrow">${kind === "starter" ? "Starter" : "Exit"} quiz done</p>
+            <p class="score">${score} / ${questions.length}</p>
+            <p>${score === questions.length ? "Full marks. Brilliant!" : score >= questions.length / 2 ? "Good work." : "Don't worry: the steps in this lesson will help."}</p>
+            <button type="button" class="btn ghost small" id="quiz-again">Try again</button></div>`;
+          host.querySelector("#quiz-again").addEventListener("click", () => { n = 0; score = 0; ask(); });
+          onFinish && onFinish(score, questions.length);
+        }
+      });
+    }
+    ask();
+  }
+
+  // ---------- the steps ----------
+  const STEPS = [
+    { label: "Start", render: startStep },
+    { label: "Starter quiz", render: starterStep },
+    { label: "Sound waves", render: waveStep },
+    { label: "Microphones", render: micStep },
+    { label: "Sampling", render: samplingStep },
+    { label: "Sample rate", render: rateStep },
+    { label: "Bit depth", render: depthStep },
+    { label: "Sound to bits", render: bitsStep },
+    { label: "Channels", render: channelStep },
+    { label: "File size", render: sizeStep },
+    { label: "Exit quiz", render: exitStep },
+    { label: "Summary", render: summaryStep },
+  ];
+  const seen = new Set(readJSON(SEEN, [0]));
+  const stepsNav = document.getElementById("steps");
+  stepsNav.innerHTML = STEPS.map((s, i) => `<li><button type="button" data-step="${i}">${i}. ${s.label}</button></li>`).join("");
+  stepsNav.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) go(+b.dataset.step); });
+
+  function go(i) { location.hash = `#step-${i}`; }
+  function show(i) {
+    stopSound();
+    animators = [];
+    seen.add(i); writeJSON(SEEN, [...seen]);
+    stepsNav.querySelectorAll("button").forEach((b) => {
+      const k = +b.dataset.step;
+      b.classList.toggle("seen", seen.has(k));
+      if (k === i) { b.setAttribute("aria-current", "step"); b.scrollIntoView({ block: "nearest", inline: "center" }); }
+      else b.removeAttribute("aria-current");
+    });
+    document.getElementById("progress").style.width = `${(i / (STEPS.length - 1)) * 100}%`;
+    const section = document.createElement("section");
+    section.className = "step";
+    section.setAttribute("aria-labelledby", "step-title");
+    main.replaceChildren(section);
+    STEPS[i].render(section);
+    const nav = document.createElement("nav");
+    nav.className = "nav"; nav.setAttribute("aria-label", "Step");
+    nav.innerHTML = `${i > 0 ? `<button type="button" class="btn ghost" data-go="${i - 1}">← ${esc(STEPS[i - 1].label)}</button>` : "<span></span>"}
+      ${i + 1 < STEPS.length ? `<button type="button" class="btn" data-go="${i + 1}">Next: ${esc(STEPS[i + 1].label)} →</button>` : `<a class="btn" href="../#lesson-${LESSON_ID}">Back to the lesson page</a>`}`;
+    nav.addEventListener("click", (e) => { const b = e.target.closest("[data-go]"); if (b) go(+b.dataset.go); });
+    section.append(nav);
+    document.title = `${STEPS[i].label} · Sound as binary · Oak Explorer`;
+    window.scrollTo(0, 0);
+    const h = document.getElementById("step-title");
+    if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+  }
+  function route() {
+    const m = location.hash.match(/^#step-(\d+)$/);
+    const i = m ? Math.min(STEPS.length - 1, +m[1]) : 0;
+    show(i);
+  }
+  const head = (eyebrow, title, lead) => `<div class="say"><p class="eyebrow">${eyebrow}</p><h2 id="step-title">${title}</h2>${lead ? `<p class="lead">${lead}</p>` : ""}</div>`;
+  function html(s) { const t = document.createElement("template"); t.innerHTML = s.trim(); return t.content; }
+
+  // 0 · Start
+  function startStep(el) {
+    el.append(html(`
+      <div class="say"><p class="eyebrow">Year 9 Computing · Data representation: images and sound</p>
+        <h1 id="step-title">Representing sound with binary data</h1>
+        <p class="lead">By the end you'll be able to <strong>describe how sound is represented in digital devices</strong>, and calculate how much storage a sound file needs.</p></div>
+      <div class="two">
+        <div class="panel"><h3>How this works</h3>
+          <ol style="margin:0;padding-left:1.2rem;display:grid;gap:4px">
+            <li>Oak's <strong>starter quiz</strong> to warm up.</li>
+            <li>Eight short animated steps, each with a <strong>quick check</strong>. Several have sounds to play, so turn your volume on (not too loud).</li>
+            <li>Oak's <strong>exit quiz</strong> to see what you've learned.</li></ol>
+          <p class="muted small">Use the step buttons at the top to jump around. Your quiz scores are saved in this browser and show on the lesson page.</p></div>
+        <div class="panel"><h3>Keywords</h3>
+          <dl class="keywords">${KEYWORDS.map(([k, d]) => `<div><dt>${esc(k)}</dt><dd>${esc(d)}</dd></div>`).join("")}</dl></div>
+      </div>`));
+  }
+
+  // 1 · Starter quiz
+  function starterStep(el) {
+    el.append(html(head("Starter quiz · from Oak", "What do you remember about images?",
+      "This lesson follows on from representing images. These six questions check what you remember before we move on to sound.")));
+    const host = document.createElement("div"); el.append(host);
+    oakQuiz(host, "starter");
+  }
+
+  // 2 · Sound waves
+  function waveStep(el) {
+    el.append(html(`${head("Part 1 · How sound is represented", "Sound is a wave",
+      "When something vibrates it pushes the air around it. The air particles squeeze together and spread apart, making waves of <strong>high and low air pressure</strong> that travel to your ears.")}
+      <div class="panel">
+        <canvas class="viz" id="wave-canvas" role="img" aria-label="Animation: a vibrating speaker cone pushes rows of air particles. Where they bunch up the pressure is high; where they spread out it is low. A wave above follows the pressure."></canvas>
+        <div class="controls"><button type="button" class="btn ghost small" id="wave-play" aria-pressed="${!reduceMotion}">${reduceMotion ? "▶ Play animation" : "❚❚ Pause"}</button>
+          <label>Loudness (how far the particles move)<input type="range" id="wave-amp" min="2" max="14" value="9"></label>
+          <label>Pitch (how fast it vibrates)<input type="range" id="wave-freq" min="1" max="4" step="0.5" value="2"></label></div>
+        <p class="small muted"><span style="color:var(--wave)">■</span> air pressure &nbsp; ● air particles. Bunched up = <strong>high pressure</strong>; spread out = <strong>low pressure</strong>.</p>
+      </div>`));
+    const canvas = el.querySelector("#wave-canvas"), amp = el.querySelector("#wave-amp"), freq = el.querySelector("#wave-freq");
+    const rows = 7, cols = 46;
+    const jitter = Array.from({ length: rows * cols }, () => [Math.random() - 0.5, Math.random() - 0.5]);
+    const a = animate((t) => {
+      const { g, w, h } = setupCanvas(canvas, 0.42);
+      g.clearRect(0, 0, w, h);
+      const left = 46, A = +amp.value, k = +freq.value, top = h * 0.42, speed = 1.6;
+      const disp = (x) => A * Math.sin(2 * Math.PI * (k * x / (w - left) - speed * t / 2));
+      // speaker cone
+      const cone = disp(0);
+      g.fillStyle = css("--muted");
+      g.fillRect(8, top - 10, 14, h - top - 10);
+      g.beginPath(); g.moveTo(22, top - 4); g.lineTo(32 + cone, top + 10); g.lineTo(32 + cone, h - 34); g.lineTo(22, h - 16); g.closePath(); g.fill();
+      // particles: positions shifted by the displacement wave
+      g.fillStyle = css("--fg");
+      const rowGap = (h - top - 20) / rows;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const x0 = left + (c + 0.5 + jitter[r * cols + c][0] * 0.5) * (w - left - 10) / cols;
+        const x = x0 + disp(x0 - left);
+        const y = top + 10 + (r + 0.5 + jitter[r * cols + c][1] * 0.4) * rowGap;
+        g.beginPath(); g.arc(x, y, 2.4, 0, 7); g.fill();
+      }
+      // pressure: highest where particles bunch (where displacement falls fastest)
+      const base = top * 0.5, height = top * 0.4;
+      g.strokeStyle = css("--line"); g.lineWidth = 1; g.beginPath(); g.moveTo(left, base); g.lineTo(w - 10, base); g.stroke();
+      g.strokeStyle = css("--wave"); g.lineWidth = 3; g.beginPath();
+      for (let x = left; x <= w - 10; x += 2) {
+        const p = -Math.cos(2 * Math.PI * (k * (x - left) / (w - left) - speed * t / 2));
+        const y = base - p * height * (A / 14);
+        x === left ? g.moveTo(x, y) : g.lineTo(x, y);
+      }
+      g.stroke();
+      g.fillStyle = css("--muted"); g.font = `12px ${css("--font")}`;
+      g.fillText("high pressure", left, 14); g.fillText("low pressure", left, top - 4);
+    });
+    const play = el.querySelector("#wave-play");
+    play.addEventListener("click", () => {
+      a.running = !a.running;
+      play.setAttribute("aria-pressed", String(a.running));
+      play.textContent = a.running ? "❚❚ Pause" : "▶ Play animation";
+    });
+    [amp, freq].forEach((i) => i.addEventListener("input", () => a.draw((performance.now() - t0) / 1000)));
+    el.append(quickCheck({
+      q: "What causes sound to travel?",
+      options: ["light reflecting off objects", "vibrations creating waves of pressure in the air", "electricity flowing through wires"],
+      correct: 1, why: "Vibrations push air particles together and apart, making a wave of pressure.",
+    }));
+  }
+
+  // 3 · Microphones and speakers
+  function micStep(el) {
+    el.append(html(`${head("Part 1 · How sound is represented", "From air to electricity to bits, and back",
+      "A <strong>microphone</strong> turns changes in air pressure into changes in electric voltage. The device measures that voltage and stores it as <strong>binary numbers</strong>. To play it back, a <strong>speaker</strong> turns changes in voltage back into changes in air pressure.")}
+      <div class="panel">
+        <div class="controls"><div class="seg" role="group" aria-label="Direction">
+          <button type="button" data-dir="rec" aria-pressed="true">🎙 Recording</button><button type="button" data-dir="play" aria-pressed="false">🔊 Playing back</button></div></div>
+        <div class="pipe" id="pipe"></div>
+        <p class="small muted" id="pipe-say" aria-live="polite"></p>
+      </div>`));
+    const MIC = `<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="17" y="4" width="14" height="24" rx="7" fill="currentColor"/><path d="M11 22a13 13 0 0 0 26 0M24 35v8M16 43h16" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
+    const SPK = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 18h8l12-10v32L14 30H6z" fill="currentColor"/><path class="ring" d="M32 17a9 9 0 0 1 0 14M37 12a16 16 0 0 1 0 24" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
+    const stages = {
+      air: { title: "Sound wave", note: "air pressure goes up and down", kind: "wave", color: "--wave" },
+      mic: { title: "Microphone", note: "pressure → voltage", svg: MIC },
+      volt: { title: "Electrical signal", note: "voltage goes up and down", kind: "wave", color: "--signal" },
+      bits: { title: "Binary", note: "stored as sequences of bits", kind: "bits" },
+      spk: { title: "Speaker", note: "voltage → pressure", svg: SPK },
+    };
+    const orders = {
+      rec: { keys: ["air", "mic", "volt", "bits"], say: "Recording: the microphone captures the sound as electricity, and the device stores it as bits." },
+      play: { keys: ["bits", "volt", "spk", "air"], say: "Playing back: the device turns the bits into a changing voltage, and the speaker turns that back into a sound wave you can hear." },
+    };
+    const pipe = el.querySelector("#pipe"), say = el.querySelector("#pipe-say");
+    let dir = "rec", canvases = [], ticker = null, bitText = "";
+    function build() {
+      const keys = orders[dir].keys;
+      pipe.innerHTML = keys.map((k, i) => {
+        const s = stages[k];
+        const body = s.kind === "wave" ? `<canvas data-color="${s.color}" aria-hidden="true"></canvas>` : s.kind === "bits" ? `<div class="bits-ticker" aria-hidden="true"></div>` : s.svg;
+        return `<div class="stage" data-i="${i}" style="color:var(--accent)">${body}<strong style="color:var(--fg)">${i + 1}. ${s.title}</strong><span>${s.note}</span></div>`;
+      }).join("");
+      canvases = [...pipe.querySelectorAll("canvas")];
+      ticker = pipe.querySelector(".bits-ticker");
+      say.textContent = orders[dir].say;
+    }
+    build();
+    el.querySelectorAll("[data-dir]").forEach((b) => b.addEventListener("click", () => {
+      dir = b.dataset.dir;
+      el.querySelectorAll("[data-dir]").forEach((o) => o.setAttribute("aria-pressed", String(o === b)));
+      build(); a.draw((performance.now() - t0) / 1000);
+    }));
+    let lastBit = 0;
+    const a = animate((t) => {
+      const lit = Math.floor(t * 0.8) % 4;
+      pipe.querySelectorAll(".stage").forEach((s, i) => s.classList.toggle("lit", reduceMotion ? false : i === lit));
+      for (const c of canvases) {
+        const { g, w, h } = setupCanvas(c, 0);
+        c.style.height = "56px";
+        const dpr = window.devicePixelRatio || 1; c.height = 56 * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.clearRect(0, 0, w, 56);
+        drawWave(g, w, 56, 4, (x) => 0.75 * Math.sin(2 * Math.PI * (2 * x - t * 0.8)) * (0.7 + 0.3 * Math.sin(2 * Math.PI * (x + t * 0.2))), css(c.dataset.color), 2.5);
+      }
+      if (ticker && (t - lastBit > 0.12 || !bitText)) {
+        lastBit = t;
+        const v = Math.round((Math.sin(t * 5) * 0.5 + 0.5) * 255);
+        bitText = (v.toString(2).padStart(8, "0") + " " + bitText).slice(0, 72);
+        ticker.textContent = bitText;
+      }
+      pipe.querySelectorAll(".ring").forEach((r) => { r.style.opacity = String(0.4 + 0.6 * Math.abs(Math.sin(t * 4))); });
+    });
+    el.append(quickCheck({
+      q: "Alex wants to record a podcast and listen back to it. What does the <strong>speaker</strong> (or headphones) do?",
+      options: ["turns changes in air pressure into changes in voltage", "turns changes in voltage into changes in air pressure", "stores the sound as binary numbers"],
+      correct: 1, why: "The microphone does the opposite job: pressure → voltage.",
+    }));
+  }
+
+  // 4 · Sampling
+  function samplingStep(el) {
+    el.append(html(`${head("Part 1 · How sound is represented", "Sampling: measuring the wave",
+      "A computer can't store a smooth wave. Instead it measures the wave's height at regular moments. Each measurement is called a <strong>sample</strong>, and each sample is stored as a binary number.")}
+      <div class="panel">
+        <canvas class="viz" id="samp-canvas" role="img" aria-label="Animation: a line sweeps across a sound wave, dropping a dot each time it takes a sample. The dots are then joined into steps, the shape the computer stores."></canvas>
+        <div class="controls"><button type="button" class="btn ghost small" id="samp-replay">↻ Replay</button>
+          <label style="flex:0 1 auto;display:flex;gap:8px;align-items:center"><input type="checkbox" id="samp-steps" checked> Show the stored shape</label>
+          <span class="readout" id="samp-read" aria-live="off"></span></div>
+      </div>`));
+    const canvas = el.querySelector("#samp-canvas"), read = el.querySelector("#samp-read"), stepsBox = el.querySelector("#samp-steps");
+    const N = 18;
+    let start = (performance.now() - t0) / 1000;
+    const a = animate((t) => {
+      const { g, w, h } = setupCanvas(canvas, 0.4), pad = 16;
+      g.clearRect(0, 0, w, h);
+      drawAxes(g, w, h, pad);
+      drawWave(g, w, h, pad, (x) => waveAt(x * WINDOW), css("--wave"), 2.5, 0.85);
+      const p = reduceMotion ? 1 : Math.min(1, (t - start) / 4.5);
+      const shown = Math.floor(p * N + 1e-9);
+      const X = (i) => pad + (i + 0.5) / N * (w - 2 * pad), Y = (v) => h / 2 - v * (h / 2 - pad);
+      if (p < 1) {
+        const sx = pad + p * (w - 2 * pad);
+        g.strokeStyle = css("--signal"); g.lineWidth = 1.5; g.setLineDash([4, 4]);
+        g.beginPath(); g.moveTo(sx, pad); g.lineTo(sx, h - pad); g.stroke(); g.setLineDash([]);
+      }
+      if (stepsBox.checked && shown) {
+        g.strokeStyle = css("--accent"); g.lineWidth = 3; g.beginPath();
+        for (let i = 0; i < shown; i++) {
+          const v = waveAt((i + 0.5) / N * WINDOW), x0 = X(i) - (w - 2 * pad) / N / 2, x1 = X(i) + (w - 2 * pad) / N / 2;
+          i === 0 ? g.moveTo(x0, Y(v)) : g.lineTo(x0, Y(v)); g.lineTo(x1, Y(v));
+        }
+        g.stroke();
+      }
+      for (let i = 0; i < shown; i++) {
+        const v = waveAt((i + 0.5) / N * WINDOW);
+        g.strokeStyle = css("--line"); g.lineWidth = 1; g.beginPath(); g.moveTo(X(i), h / 2); g.lineTo(X(i), Y(v)); g.stroke();
+        g.fillStyle = css("--signal"); g.beginPath(); g.arc(X(i), Y(v), 5, 0, 7); g.fill();
+      }
+      read.textContent = shown ? `Sample ${shown}: height ${waveAt((shown - 0.5) / N * WINDOW).toFixed(2)}` : "";
+    }, { always: true });
+    el.querySelector("#samp-replay").addEventListener("click", () => { start = (performance.now() - t0) / 1000; });
+    stepsBox.addEventListener("change", () => a.draw((performance.now() - t0) / 1000));
+    el.append(quickCheck({
+      q: "What is a <strong>sample</strong>?",
+      options: ["a whole sound file", "the measurement of a sound wave at a point in time", "the number of bits in a file", "a speaker that plays sound"],
+      correct: 1,
+    }));
+  }
+
+  // 5 · Sample rate
+  const RATES = [1000, 2000, 4000, 8000, 11025, 22050, 44100];
+  function rateStep(el) {
+    el.append(html(`${head("Part 1 · How sound is represented", "Sample rate: how often you measure",
+      "The <strong>sample rate</strong> is the number of samples taken every second. More samples per second follow the wave more closely, so the sound is more accurate. A typical value is <strong>44,100 samples per second</strong>.")}
+      <div class="two">
+        <div class="panel">
+          <canvas class="viz" id="rate-canvas" role="img" aria-label="Graph of 2 milliseconds of a sound wave with the samples taken at the chosen sample rate, and the stepped shape those samples store."></canvas>
+          <div class="controls"><label>Sample rate: <span class="readout" id="rate-read"></span>
+            <input type="range" id="rate" min="0" max="${RATES.length - 1}" value="3" aria-describedby="rate-read"></label></div>
+          <p class="small muted">Showing 2 milliseconds of sound. <span style="color:var(--wave)">■</span> the real wave <span style="color:var(--accent)">■</span> what gets stored</p>
+        </div>
+        <div class="panel">
+          <h3>Listen to the difference</h3>
+          <p class="small">The same short tune, recorded at the sample rate you've chosen.</p>
+          <div class="controls"><button type="button" class="btn" id="rate-play">▶ Play at <span id="rate-btn"></span></button>
+            <button type="button" class="btn ghost" id="rate-orig">▶ Play the original</button></div>
+          <p>In <strong>1 second</strong>: <span class="big-num" id="rate-count"></span> samples</p>
+          <p class="small muted" id="rate-note"></p>
+        </div>
+      </div>`));
+    const canvas = el.querySelector("#rate-canvas"), slider = el.querySelector("#rate");
+    const rate = () => RATES[+slider.value];
+    function draw() {
+      const { g, w, h } = setupCanvas(canvas, 0.45), pad = 14, r = rate();
+      g.clearRect(0, 0, w, h);
+      drawAxes(g, w, h, pad);
+      drawWave(g, w, h, pad, (x) => waveAt(x * WINDOW), css("--wave"), 2.5, 0.7);
+      const n = r * WINDOW, Y = (v) => h / 2 - v * (h / 2 - pad), X = (s) => pad + s / WINDOW * (w - 2 * pad);
+      g.strokeStyle = css("--accent"); g.lineWidth = 3; g.beginPath();
+      for (let i = 0; i < Math.ceil(n); i++) {
+        const s = i / r, v = waveAt(s), x1 = X(Math.min(WINDOW, (i + 1) / r));
+        i === 0 ? g.moveTo(X(s), Y(v)) : g.lineTo(X(s), Y(v)); g.lineTo(x1, Y(v));
+      }
+      g.stroke();
+      g.fillStyle = css("--signal");
+      for (let i = 0; i < Math.ceil(n); i++) { const s = i / r; g.beginPath(); g.arc(X(s), Y(waveAt(s)), n > 40 ? 2.5 : 4.5, 0, 7); g.fill(); }
+      el.querySelector("#rate-read").textContent = `${fmt(r)} samples per second`;
+      el.querySelector("#rate-btn").textContent = `${fmt(r)} a second`;
+      el.querySelector("#rate-count").textContent = fmt(r);
+      el.querySelector("#rate-note").textContent = r <= 2000 ? "Very few samples: the stored shape looks nothing like the wave, and the tune sounds buzzy and wrong."
+        : r <= 8000 ? "Like an old phone call: you can hear the tune, but it's rough."
+        : r < 44100 ? "Close to the real wave. Higher rates sound clearer but need more storage."
+        : "CD quality: 44,100 samples every second follow the wave closely.";
+    }
+    animate(draw, { still: true });
+    slider.addEventListener("input", draw);
+    el.querySelector("#rate-play").addEventListener("click", () => {
+      const ac = ctx(); if (!ac) return;
+      playSamples(sampleAndHold(tune(), ac.sampleRate, Math.min(rate(), ac.sampleRate)));
+    });
+    el.querySelector("#rate-orig").addEventListener("click", () => { if (ctx()) playSamples(tune()); });
+    el.append(quickCheck({
+      q: "A sound is recorded at 8,000 samples per second. How many samples are stored for <strong>3 seconds</strong> of sound?",
+      options: ["8,003", "2,667", "24,000", "11,000"], correct: 2, why: "8,000 samples each second × 3 seconds = 24,000 samples.",
+    }));
+  }
+
+  // 6 · Bit depth
+  function depthStep(el) {
+    el.append(html(`${head("Part 1 · How sound is represented", "Sample resolution (bit depth): how precisely you measure",
+      "Each sample is stored as a binary number. The <strong>sample resolution</strong>, or <strong>bit depth</strong>, is the number of bits used for each sample. More bits give more possible values, so each sample is closer to the real wave. A typical value is <strong>16 bits</strong> per sample.")}
+      <div class="two">
+        <div class="panel">
+          <canvas class="viz" id="depth-canvas" role="img" aria-label="Graph of a sound wave. Each sample is rounded to the nearest of the levels the bit depth allows; the levels are drawn as horizontal lines."></canvas>
+          <div class="controls"><label>Bit depth: <span class="readout" id="depth-read"></span>
+            <input type="range" id="depth" min="1" max="16" value="3"></label></div>
+          <h3 class="small">The first 8 samples in binary</h3>
+          <div class="chips" id="depth-chips"></div>
+        </div>
+        <div class="panel">
+          <h3>Possible values per sample</h3>
+          <p><span class="big-num" id="depth-levels"></span></p>
+          <p class="small muted" id="depth-why"></p>
+          <div class="controls"><button type="button" class="btn" id="depth-play">▶ Play at <span id="depth-btn"></span></button>
+            <button type="button" class="btn ghost" id="depth-orig">▶ Play the original</button></div>
+          <p class="small muted">Low bit depths sound crunchy: every sample is rounded to the nearest level it can store.</p>
+        </div>
+      </div>`));
+    const canvas = el.querySelector("#depth-canvas"), slider = el.querySelector("#depth"), N = 24;
+    let chipBits = 0; // the chips pop in, so they're only rebuilt when the bit depth changes
+    function draw() {
+      const bits = +slider.value, L = 2 ** bits;
+      const { g, w, h } = setupCanvas(canvas, 0.45), pad = 14;
+      const Y = (v) => h / 2 - v * (h / 2 - pad), X = (i) => pad + (i + 0.5) / N * (w - 2 * pad), cell = (w - 2 * pad) / N;
+      g.clearRect(0, 0, w, h);
+      if (L <= 64) {
+        g.strokeStyle = css("--line"); g.lineWidth = 1;
+        for (let k = 0; k < L; k++) { const y = Y(k / (L - 1) * 2 - 1); g.beginPath(); g.moveTo(pad, y); g.lineTo(w - pad, y); g.stroke(); }
+      }
+      drawWave(g, w, h, pad, (x) => waveAt(x * WINDOW), css("--wave"), 2.5, 0.7);
+      g.strokeStyle = css("--accent"); g.lineWidth = 3; g.beginPath();
+      for (let i = 0; i < N; i++) {
+        const q = quantiseValue(waveAt((i + 0.5) / N * WINDOW), bits);
+        i === 0 ? g.moveTo(X(i) - cell / 2, Y(q)) : g.lineTo(X(i) - cell / 2, Y(q)); g.lineTo(X(i) + cell / 2, Y(q));
+      }
+      g.stroke();
+      g.fillStyle = css("--signal");
+      for (let i = 0; i < N; i++) { g.beginPath(); g.arc(X(i), Y(quantiseValue(waveAt((i + 0.5) / N * WINDOW), bits)), 4, 0, 7); g.fill(); }
+      el.querySelector("#depth-read").textContent = `${bits} bit${bits === 1 ? "" : "s"} per sample`;
+      el.querySelector("#depth-btn").textContent = `${bits} bit${bits === 1 ? "" : "s"}`;
+      el.querySelector("#depth-levels").textContent = fmt(L);
+      el.querySelector("#depth-why").innerHTML = `${bits} bit${bits === 1 ? "" : "s"} can make 2<sup>${bits}</sup> = ${fmt(L)} different patterns, from ${"0".repeat(bits)} to ${"1".repeat(bits)}.`;
+      if (chipBits !== bits) chipBits = bits, el.querySelector("#depth-chips").innerHTML = Array.from({ length: 8 }, (_, i) =>
+        `<span class="chip"><b>${i + 1}</b>${levelOf(waveAt((i + 0.5) / N * WINDOW), bits).toString(2).padStart(bits, "0")}</span>`).join("");
+    }
+    animate(draw, { still: true });
+    slider.addEventListener("input", draw);
+    el.querySelector("#depth-play").addEventListener("click", () => { if (ctx()) playSamples(quantise(tune(), +slider.value), { gain: 0.2 }); });
+    el.querySelector("#depth-orig").addEventListener("click", () => { if (ctx()) playSamples(tune(), { gain: 0.2 }); });
+    el.append(quickCheck({
+      q: "How many different values can a sample have with a bit depth of <strong>3 bits</strong>?",
+      options: ["3", "6", "8", "9"], correct: 2, why: "2 × 2 × 2 = 8 patterns: 000, 001, 010, 011, 100, 101, 110 and 111.",
+    }));
+  }
+
+  // 7 · Sound to bits
+  function bitsStep(el) {
+    el.append(html(`${head("Part 1 · How sound is represented", "Putting it together: sound becomes a sequence of bits",
+      "Each sample becomes a binary number, one after another. Joined up, they make the long sequence of 0s and 1s that is stored in the sound file.")}
+      <div class="panel">
+        <canvas class="viz" id="tobits-canvas" role="img" aria-label="Animation: one sample at a time is highlighted on a wave, turned into a 4-bit binary number, and added to the end of a stream of bits."></canvas>
+        <div class="controls"><button type="button" class="btn ghost small" id="tobits-replay">↻ Start again</button>
+          <span class="readout" id="tobits-count" aria-live="polite"></span></div>
+        <div class="stream" id="tobits-stream" aria-label="Bits stored so far"></div>
+      </div>
+      <div class="panel"><p>With <strong>4 bits</strong> per sample, 12 samples need 12 × 4 = <strong>48 bits</strong>.
+        A real recording at 44,100 samples per second and 16 bits per sample stores <strong>705,600 bits every second</strong>.</p></div>`));
+    const canvas = el.querySelector("#tobits-canvas"), stream = el.querySelector("#tobits-stream"), count = el.querySelector("#tobits-count");
+    const N = 12, BITS = 4;
+    let start = (performance.now() - t0) / 1000, added = 0;
+    function reset() { start = (performance.now() - t0) / 1000; added = 0; stream.innerHTML = ""; count.textContent = ""; }
+    const codeOf = (i) => levelOf(waveAt((i + 0.5) / N * WINDOW), BITS).toString(2).padStart(BITS, "0");
+    animate((t) => {
+      const { g, w, h } = setupCanvas(canvas, 0.36), pad = 14;
+      const Y = (v) => h / 2 - v * (h / 2 - pad - 14), X = (i) => pad + (i + 0.5) / N * (w - 2 * pad);
+      const target = reduceMotion ? N : Math.min(N, Math.floor((t - start) / 0.7) + 1);
+      while (added < target) {
+        const s = document.createElement("span"); s.textContent = codeOf(added); stream.append(s, " ");
+        added++;
+        count.textContent = `${added} sample${added === 1 ? "" : "s"} × ${BITS} bits = ${added * BITS} bits`;
+      }
+      g.clearRect(0, 0, w, h);
+      drawAxes(g, w, h, pad);
+      drawWave(g, w, h, pad, (x) => waveAt(x * WINDOW), css("--wave"), 2, 0.6);
+      g.font = `600 12px ${css("--mono")}`; g.textAlign = "center";
+      for (let i = 0; i < N; i++) {
+        const v = quantiseValue(waveAt((i + 0.5) / N * WINDOW), BITS), active = i === added - 1 && added < N + 1;
+        g.globalAlpha = i < added ? 1 : 0.25;
+        g.fillStyle = active ? css("--signal") : css("--accent");
+        const bw = Math.min(18, (w - 2 * pad) / N * 0.5);
+        g.fillRect(X(i) - bw / 2, Math.min(h / 2, Y(v)), bw, Math.abs(Y(v) - h / 2));
+        if (i < added && w > 420) { g.fillStyle = css("--fg"); g.fillText(codeOf(i), X(i), v >= 0 ? Y(v) - 6 : Y(v) + 16); }
+      }
+      g.globalAlpha = 1; g.textAlign = "start";
+    }, { always: true });
+    el.querySelector("#tobits-replay").addEventListener("click", reset);
+    el.append(quickCheck({
+      q: "How is digital sound stored?",
+      options: ["as a smooth wave of air pressure", "as sequences of bits (0s and 1s)", "as electrical voltage on the speaker", "as a list of the instruments used"],
+      correct: 1, why: "Every sample is a binary number, and they're stored one after another.",
+    }));
+  }
+
+  // 8 · Channels
+  function channelStep(el) {
+    el.append(html(`${head("Part 2 · The size of a sound file", "Channels: mono, stereo and surround",
+      "In sound, a <strong>channel</strong> is <strong>a single stream of audio used to reproduce sound</strong>. Each channel adds to the overall sound you hear. In films, a car chase can start in one headphone and move to the other: that's two channels playing slightly different sounds.")}
+      <p class="note">Careful: “channel” means different things in different subjects. Oak's curriculum ontology data even pairs this lesson with a netball definition (a line on the court) by mistake. In computing, a channel is an audio stream.</p>
+      <div class="two">
+        <div class="panel">
+          <canvas class="viz" id="ch-canvas" role="img" aria-label="A car drives from left to right past a listener wearing headphones. Two meters show how loud the left and right channels are."></canvas>
+          <div class="controls">
+            <div class="seg" role="group" aria-label="Number of channels"><button type="button" data-mode="mono" aria-pressed="false">Mono · 1 channel</button><button type="button" data-mode="stereo" aria-pressed="true">Stereo · 2 channels</button></div>
+            <button type="button" class="btn" id="ch-play">▶ Play the car (use headphones)</button></div>
+        </div>
+        <div class="panel">
+          <p><strong>Mono</strong>: one channel. The same sound goes to every speaker or headphone.</p>
+          <p><strong>Stereo</strong>: two channels, one for the left and one for the right.</p>
+          <p><strong>Surround sound</strong>: many channels (5.1 surround has 6) played from speakers placed all around you, like in a cinema.</p>
+          <p class="small muted">More channels = more data to store, so a bigger file.</p>
+        </div>
+      </div>`));
+    const canvas = el.querySelector("#ch-canvas");
+    let mode = "stereo", playStart = null;
+    el.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => {
+      mode = b.dataset.mode;
+      el.querySelectorAll("[data-mode]").forEach((o) => o.setAttribute("aria-pressed", String(o === b)));
+    }));
+    const panAt = (p) => -1 + 2 * p;
+    animate((t) => {
+      const { g, w, h } = setupCanvas(canvas, 0.5);
+      g.clearRect(0, 0, w, h);
+      const prog = playProgress();
+      const p = prog !== null ? prog : reduceMotion ? 0.5 : (t * 0.18) % 1;
+      // road
+      const roadY = h * 0.3;
+      g.fillStyle = css("--line"); g.fillRect(0, roadY - 18, w, 36);
+      g.strokeStyle = css("--surface"); g.setLineDash([14, 12]); g.lineWidth = 2; g.beginPath(); g.moveTo(0, roadY); g.lineTo(w, roadY); g.stroke(); g.setLineDash([]);
+      // car
+      const cx = 20 + p * (w - 40);
+      g.fillStyle = css("--signal");
+      g.beginPath(); g.roundRect ? g.roundRect(cx - 26, roadY - 14, 52, 18, 5) : g.rect(cx - 26, roadY - 14, 52, 18); g.fill();
+      g.beginPath(); g.roundRect ? g.roundRect(cx - 14, roadY - 24, 28, 12, 4) : g.rect(cx - 14, roadY - 24, 28, 12); g.fill();
+      g.fillStyle = css("--fg"); g.beginPath(); g.arc(cx - 14, roadY + 5, 5, 0, 7); g.arc(cx + 14, roadY + 5, 5, 0, 7); g.fill();
+      // listener with headphones
+      const hx = w / 2, hy = h * 0.7, r = Math.min(34, h * 0.13);
+      g.fillStyle = css("--muted"); g.beginPath(); g.arc(hx, hy, r, 0, 7); g.fill();
+      g.strokeStyle = css("--fg"); g.lineWidth = 4; g.beginPath(); g.arc(hx, hy, r + 6, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+      const pan = mode === "mono" ? 0 : panAt(p);
+      const near = 1 - Math.min(1, Math.abs(p - 0.5) * 1.4);
+      const levels = [Math.sqrt((1 - pan) / 2), Math.sqrt((1 + pan) / 2)].map((v) => v * (0.35 + 0.65 * near));
+      [[-1, "--left", "L"], [1, "--rightch", "R"]].forEach(([side, col, label], k) => {
+        const ex = hx + side * (r + 6);
+        g.fillStyle = css(col); g.beginPath(); g.arc(ex, hy, 10, 0, 7); g.fill();
+        // level meter
+        const mx = side < 0 ? 16 : w - 36, mh = h * 0.5, my = h * 0.45;
+        g.fillStyle = css("--line"); g.fillRect(mx, my, 20, mh);
+        g.fillStyle = css(col); g.fillRect(mx, my + mh * (1 - levels[k]), 20, mh * levels[k]);
+        g.fillStyle = css("--fg"); g.font = `600 13px ${css("--font")}`; g.fillText(label, mx + 5, my - 6);
+        // sound rings
+        const rings = Math.round(levels[k] * 3);
+        g.strokeStyle = css(col); g.lineWidth = 2;
+        for (let i = 1; i <= rings; i++) { g.globalAlpha = 1 - i / 4; g.beginPath(); g.arc(ex, hy, 12 + i * 8 + (t * 20 % 8), side < 0 ? Math.PI * 0.7 : -Math.PI * 0.3, side < 0 ? Math.PI * 1.3 : Math.PI * 0.3); g.stroke(); }
+        g.globalAlpha = 1;
+      });
+      g.fillStyle = css("--muted"); g.font = `12px ${css("--font")}`; g.textAlign = "center";
+      g.fillText(mode === "mono" ? "Mono: both sides hear the same" : "Stereo: left and right differ", hx, h - 6);
+      g.textAlign = "start";
+    }, { always: true });
+    const playBtn = el.querySelector("#ch-play");
+    playBtn.addEventListener("click", () => {
+      const ac = ctx(); if (!ac) return;
+      const rate = ac.sampleRate, dur = 4, data = new Float32Array(rate * dur);
+      let phase = 0;
+      for (let i = 0; i < data.length; i++) {
+        const p = i / data.length, f = 70 + 40 * p + 6 * Math.sin(2 * Math.PI * 9 * i / rate);
+        phase += f / rate;
+        const saw = 2 * (phase % 1) - 1, near = 1 - Math.min(1, Math.abs(p - 0.5) * 1.4);
+        data[i] = (0.7 * saw + 0.3 * Math.sin(2 * Math.PI * phase * 2) + 0.08 * (Math.random() * 2 - 1)) * (0.25 + 0.75 * near) * Math.min(1, p * 20, (1 - p) * 20);
+      }
+      playBtn.disabled = true;
+      playSamples(data, { pan: mode === "mono" ? 0 : panAt, gain: 0.3, onEnd: () => { playBtn.disabled = false; } });
+    });
+    el.append(quickCheck({
+      q: "What is the main difference between mono and stereo audio?",
+      options: ["stereo audio is louder than mono audio", "mono audio has one channel while stereo audio has two channels", "mono audio is used for music, while stereo audio is used for speech"],
+      correct: 1,
+    }, 1));
+    el.append(quickCheck({
+      q: "True or false: <em>“A single audio file contains only one channel of sound.”</em>",
+      options: ["True", "False"], correct: 1,
+      why: "Many formats (for example stereo or surround sound) contain multiple channels within one file, and each channel can be played on a separate speaker.",
+    }, 2));
+  }
+
+  // 9 · File size
+  function sizeStep(el) {
+    el.append(html(`${head("Part 2 · The size of a sound file", "How big is a sound file?",
+      "Better quality sound needs more storage. To work out the size, you need four things: the <strong>sample rate</strong>, the <strong>sample resolution</strong>, the <strong>duration</strong> and the number of <strong>channels</strong>.")}
+      <div class="panel"><p style="font-size:1.05rem"><strong>size in bits</strong> = sample rate × sample resolution × duration (seconds) × channels</p>
+        <p class="small muted">Then ÷ 8 for bytes, and ÷ 1,000 for kilobytes.</p></div>
+      <div class="two">
+        <div class="panel">
+          <h3>Calculator</h3>
+          <div class="presets" role="group" aria-label="Examples from the lesson">
+            <button type="button" class="btn ghost small" data-preset="8000,1,1,1">1 s at 8,000 × 1 bit</button>
+            <button type="button" class="btn ghost small" data-preset="44100,16,10,2">10 s CD-quality stereo</button>
+            <button type="button" class="btn ghost small" data-preset="22050,8,30,2">Alex's podcast intro</button></div>
+          <div class="calc-grid">
+            <label>Sample rate (samples per second)<select id="c-rate">${RATES.concat([48000]).map((r) => `<option value="${r}">${fmt(r)}</option>`).join("")}</select></label>
+            <label>Sample resolution (bits per sample)<select id="c-bits">${[1, 4, 8, 16, 24].map((b) => `<option value="${b}">${b}</option>`).join("")}</select></label>
+            <label>Duration (seconds)<input id="c-dur" type="number" min="0" max="36000" step="1" value="10"></label>
+            <label>Channels<select id="c-ch"><option value="1">1 · mono</option><option value="2">2 · stereo</option><option value="6">6 · 5.1 surround</option></select></label>
+          </div>
+        </div>
+        <div class="panel"><h3>Working</h3><div class="chain" id="chain" aria-live="polite"></div></div>
+      </div>`));
+    const f = { rate: el.querySelector("#c-rate"), bits: el.querySelector("#c-bits"), dur: el.querySelector("#c-dur"), ch: el.querySelector("#c-ch") };
+    f.rate.value = "44100"; f.bits.value = "16"; f.ch.value = "2";
+    const chain = el.querySelector("#chain");
+    let anim = 0;
+    function countUp(node, to, unit) {
+      if (reduceMotion) { node.textContent = fmt(to) + unit; return; }
+      const t1 = performance.now(), id = ++anim;
+      (function tick(now) {
+        if (id !== anim) return;
+        const p = Math.min(1, (now - t1) / 600), e = 1 - (1 - p) ** 3;
+        node.textContent = fmt(to * e) + unit;
+        if (p < 1) requestAnimationFrame(tick);
+      })(t1);
+    }
+    function calc() {
+      const r = +f.rate.value, b = +f.bits.value, d = Math.max(0, +f.dur.value || 0), c = +f.ch.value;
+      const perSec = r * b, mono = perSec * d, bits = mono * c, bytes = bits / 8, kb = bytes / 1000;
+      const rows = [
+        [`${fmt(r)} samples × ${b} bit${b === 1 ? "" : "s"}`, `${fmt(perSec)} bits per second`],
+        [`× ${fmtDec(d)} second${d === 1 ? "" : "s"}`, `${fmt(mono)} bits`],
+        [`× ${c} channel${c === 1 ? "" : "s"}`, `${fmt(bits)} bits`, true],
+        [`÷ 8 bits in a byte`, `${fmtDec(bytes)} bytes`],
+        [`÷ 1,000`, `${fmtDec(kb)} KB`],
+      ];
+      if (kb >= 1000) rows.push([`÷ 1,000`, `${fmtDec(kb / 1000)} MB`]);
+      chain.innerHTML = rows.map(([op, val, total], i) => `<div class="row${total ? " total" : ""}" style="animation-delay:${i * 70}ms"><span class="op">${op}</span><span class="val">${val}</span></div>`).join("");
+      countUp(chain.querySelector(".total .val"), bits, " bits");
+    }
+    Object.values(f).forEach((i) => i.addEventListener("input", calc));
+    el.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => {
+      const [r, bits, d, c] = b.dataset.preset.split(",");
+      f.rate.value = r; f.bits.value = bits; f.dur.value = d; f.ch.value = c; calc();
+    }));
+    calc();
+    el.append(quickCheck({
+      q: "Which of these affects the size of a digital sound file?",
+      options: ["the volume setting on the speakers", "the sample rate", "the amount of storage on the computer it is saved on"],
+      correct: 1,
+    }, 1));
+    el.append(quickCheck({
+      q: "A <strong>5-second mono</strong> recording uses <strong>8,000 samples per second</strong> and <strong>8 bits per sample</strong>. How many <strong>bytes</strong> is it?",
+      answer: 40000, why: "8,000 × 8 × 5 × 1 = 320,000 bits, and 320,000 ÷ 8 = 40,000 bytes.",
+    }, 2));
+  }
+
+  // 10 · Exit quiz
+  function exitStep(el) {
+    el.append(html(head("Exit quiz · from Oak", "What have you learned?", "Six questions on sampling, bit depth and channels.")));
+    const host = document.createElement("div"); el.append(host);
+    oakQuiz(host, "exit");
+  }
+
+  // 11 · Summary
+  async function summaryStep(el) {
+    el.append(html(`${head("Well done", "What you've learned", "")}
+      <div class="two">
+        <div class="panel"><ul style="margin:0;padding-left:1.2rem;display:grid;gap:6px" id="sum-points">
+          <li>Sounds are represented digitally using <strong>samples</strong>, stored as sequences of bits.</li>
+          <li><strong>Sample rate</strong> is how many samples are taken per second. A higher sample rate generally means better sound quality.</li>
+          <li><strong>Sample resolution</strong> (bit depth) is the number of bits used to represent each sample. Higher bit depth also improves sound quality.</li>
+          <li><strong>Channels</strong> are the separate audio streams in a sound file: mono has one, stereo has two.</li>
+          <li>Size in bits = sample rate × sample resolution × duration × channels. Better quality means bigger files.</li></ul></div>
+        <div class="panel" id="sum-scores"><h3>Your quiz scores</h3><p class="muted small">Take the starter and exit quizzes to see your scores here.</p></div>
+      </div>
+      <label class="panel" style="grid-auto-flow:column;justify-content:start;align-items:center;cursor:pointer"><input type="checkbox" id="sum-done" style="width:20px;height:20px;accent-color:var(--accent)"> I've done this lesson</label>`));
+    const scores = readJSON(SCORES, {}), rows = ["starter", "exit"].map((k) => {
+      const s = scores[`${LESSON_ID}:${k}`];
+      return s ? `<p>${k === "starter" ? "Starter" : "Exit"} quiz: <strong>${s.score} / ${s.total}</strong></p>` : "";
+    }).join("");
+    if (rows) el.querySelector("#sum-scores").innerHTML = `<h3>Your best quiz scores</h3>${rows}`;
+    const box = el.querySelector("#sum-done");
+    box.checked = isDone();
+    box.addEventListener("change", () => markDone(box.checked));
+  }
+
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>
+</body>
+</html>

@@ -29,6 +29,14 @@ def test_lesson_extras():
     assert lesson_extras({"teacherTips": [], "contentGuidance": None, "supervisionLevel": None}) == {}
 
 
+def test_lesson_extras_keep_the_lessons_own_keyword_definitions():
+    lesson = {"lessonKeywords": [
+        {"keyword": "channel", "description": "a single stream of audio used to reproduce sound"},
+        {"keyword": "", "description": "dropped"},
+    ]}
+    assert lesson_extras(lesson) == {"keywords": [["channel", "a single stream of audio used to reproduce sound"]]}
+
+
 def test_load_extras_reads_only_bulk_files(tmp_path):
     (tmp_path / "geography-secondary.json").write_text(json.dumps(
         {"sequenceSlug": "geography-secondary", "subjectTitle": "Geography", "sequence": [], "lessons": [LESSON]}

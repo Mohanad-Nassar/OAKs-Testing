@@ -184,6 +184,10 @@ dl.keywords dd { margin: 0; color: var(--muted); }
 }
 .quiz-table td a:hover { background: var(--accent); color: var(--on-accent); }
 .quiz-links { display: grid; gap: 10px; }
+.interactive { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; background: var(--accent-soft); border-color: var(--accent); }
+.interactive .wave-icon { width: 44px; height: 44px; color: var(--accent); }
+.interactive .go { font-weight: 600; color: var(--accent); white-space: nowrap; }
+@media (max-width: 480px) { .interactive { grid-template-columns: auto minmax(0, 1fr); } .interactive .go { grid-column: 2; } }
 .quiz-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
 .quiz-link:hover { transform: none; border-color: var(--line); }
 .quiz-link .score { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
@@ -423,6 +427,8 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
     view.innerHTML = html;
     document.title = title ? `${title} · Oak Explorer` : "Oak Explorer";
   }
+  // Lessons with an interactive, animated version in lessons/<slug>.html.
+  const INTERACTIVE = new Set(["representing-sound-with-binary-data"]);
   const oakUrl = (slug) => `https://www.thenational.academy/teachers/lessons/${encodeURIComponent(slug)}`;
   const oakLink = (lesson, cls = "oak-link") => lesson.slug
     ? `<a class="${cls}" href="${oakUrl(lesson.slug)}" target="_blank" rel="noopener">View on Oak <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens Oak National Academy in a new tab)</span></a>` : "";
@@ -588,6 +594,10 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
     const quizzes = lesson.quiz ? `<section><h2>Quizzes</h2><div class="quiz-links">
         ${quizLink("starter", "Starter quiz", "Check what you remember before the lesson")}
         ${quizLink("exit", "Exit quiz", "Test what you've learned after the lesson")}</div></section>` : "";
+    const interactive = INTERACTIVE.has(lesson.slug) ? `<a class="tile interactive" href="lessons/${encodeURIComponent(lesson.slug)}.html">
+        <svg class="wave-icon" viewBox="0 0 44 44" aria-hidden="true"><path d="M4 22c4-12 8-12 12 0s8 12 12 0 8-12 12 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="10" cy="13" r="2.5" fill="currentColor"/><circle cx="22" cy="31" r="2.5" fill="currentColor"/><circle cx="34" cy="13" r="2.5" fill="currentColor"/></svg>
+        <span><strong>Interactive lesson</strong><br><span class="muted small">Animated step-by-step learning with sounds, quick checks and Oak's quizzes</span></span>
+        <span class="go">Start <span aria-hidden="true">→</span></span></a>` : "";
     const pager = u ? `<nav class="pager">
         ${prev ? `<a href="${lessonHash(prev, uvId, progId)}">← Previous lesson</a>` : "<span></span>"}
         ${next ? `<a href="${lessonHash(next, uvId, progId)}">Next lesson →</a>` : `<a href="${unitHash(uvId, progId)}">Back to the unit</a>`}
@@ -601,6 +611,7 @@ math { font-size: 1.05em; font-family: inherit; math-style: normal; }
       </div>
       ${guidanceHtml(lesson)}
       ${lesson.outcome ? `<section class="outcome"><h2>By the end you'll be able to…</h2><p>${esc(lesson.outcome)}</p></section>` : ""}
+      ${interactive}
       <div class="split"><div>${quizzes}${points}</div><aside>${quiz}${keywords}</aside></div>
       ${pager}`, lesson.name);
     document.getElementById("done-toggle").addEventListener("change", (e) => setDone(lessonId, e.target.checked));

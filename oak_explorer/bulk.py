@@ -1,8 +1,9 @@
 """Read Oak's bulk-download files (https://open-api.thenational.academy/bulk-download).
 
 Each file is one subject sequence (e.g. data/spanish-secondary.json) following Oak's bulk
-export schema. The explorer takes the lesson details its other sources lack: teacher tips
-and content guidance with the supervision level.
+export schema. The explorer takes the lesson details its other sources lack: teacher tips,
+content guidance with the supervision level, and keyword definitions written for that lesson
+(the ontology shares one definition per keyword across subjects, e.g. "channel" from netball).
 """
 
 import json
@@ -19,8 +20,11 @@ def is_bulk_file(path: Path) -> bool:
 
 
 def lesson_extras(lesson: dict) -> dict:
-    """Teacher tips and content guidance for one bulk-file lesson (empty fields left out)."""
+    """Teacher tips, content guidance and keywords for one bulk-file lesson (empty fields left out)."""
     extras: dict = {}
+    keywords = [[clean(k.get("keyword")), clean(k.get("description"))] for k in lesson.get("lessonKeywords") or []]
+    if keywords := [k for k in keywords if k[0]]:
+        extras["keywords"] = keywords
     tips = [clean(t.get("teacherTip")) for t in lesson.get("teacherTips") or []]
     if tips := [t for t in tips if t]:
         extras["tips"] = tips
