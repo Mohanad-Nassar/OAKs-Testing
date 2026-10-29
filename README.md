@@ -54,6 +54,42 @@ uv run python scripts/fetch_quizzes.py
 uv run python scripts/build_static.py
 ```
 
+### Subjects the ontology lacks (RE, RSHE/PSHE)
+
+The curriculum ontology doesn't cover Religious Education or RSHE/PSHE yet. If their Oak
+bulk-download files are in `data/` (`religious-education-secondary.json`,
+`rshe-pshe-secondary.json`), the build uses them directly for Years 7–9. Otherwise
+`scripts/fetch_subjects.py` builds them from the API: programmes per year, units in
+teaching order (with prior knowledge and threads) and lessons (outcome, key learning points,
+keywords, misconceptions). It saves `data/oak-subjects.json`, which the static build merges in
+alongside the other subjects; their quizzes come from `fetch_quizzes.py` as usual.
+
+```bash
+uv run python scripts/fetch_subjects.py    # Years 7–9 of RE and RSHE/PSHE, a few hundred requests
+uv run python scripts/fetch_quizzes.py
+uv run python scripts/build_static.py
+```
+
+### Oak bulk-download files
+
+Files from Oak's [bulk download](https://open-api.thenational.academy/bulk-download)
+(e.g. `data/spanish-secondary.json`, `data/computing-secondary.json`) are picked up by the build
+automatically. They add teacher tips (shown in the board view's "Teacher notes" panel, toggled with
+the button or `T`), content guidance with the supervision level (shown as a warning on the lesson
+page), and each lesson's own keyword definitions, which replace the ontology's shared ones. Every
+lesson also links to its page on Oak's website.
+
+### Interactive lessons
+
+`static_site/lessons/` holds hand-built, animated versions of single lessons, copied as they are
+into `site/lessons/`. A lesson page links to one when its slug is listed in `INTERACTIVE` in
+`static_site/index.html`. So far there is one: Year 9 Computing's
+[Representing sound with binary data](static_site/lessons/representing-sound-with-binary-data.html),
+built from the lesson's video transcript. It runs Oak's starter quiz, eight animated steps (sound
+waves, microphones and speakers, sampling, sample rate and bit depth with sounds to compare, sound
+to bits, mono/stereo channels, a file-size calculator), each with a quick check, then Oak's exit
+quiz. The quizzes are read from `site/data/`, and scores and "done" are shared with the main site.
+
 Questions that need an image are skipped unless the image can be downloaded from
 `cloudinary-res.thenational.academy`.
 
@@ -114,7 +150,8 @@ htmx is bundled in `static/` so the app works offline.
 The data is an early release (v0.1.x), so expect some rough edges:
 
 - Keywords are de-duplicated by name across subjects, so a definition can come from another subject
-  (e.g. "cell" in Biology shows the spreadsheet definition).
+  (e.g. "cell" in Biology shows the spreadsheet definition, and "channel" in Computing a netball
+  one). Subjects with a bulk-download file in `data/` use each lesson's own definitions instead.
 - Roughly a quarter of misconception corrections are written for teachers rather than pupils. Each
   answer links back to its lesson for context.
 - KS3 science programmes are stored under the "Biology" subject.

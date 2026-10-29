@@ -28,6 +28,18 @@ def test_page_matches_its_source(tmp_path, monkeypatch):
     assert (tmp_path / "index.html").read_text(encoding="utf-8") == (SITE / "index.html").read_text(
         encoding="utf-8"
     ), "run: uv run python scripts/build_static.py --page-only"
+    built = {p.relative_to(tmp_path): p.read_bytes() for p in (tmp_path / "lessons").rglob("*") if p.is_file()}
+    committed = {p.relative_to(SITE): p.read_bytes() for p in (SITE / "lessons").rglob("*") if p.is_file()}
+    assert built == committed, "run: uv run python scripts/build_static.py --page-only"
+
+
+def test_interactive_lessons_are_complete_documents_linked_from_the_page():
+    page = (SITE / "index.html").read_text(encoding="utf-8")
+    for path in (SITE / "lessons").glob("*.html"):
+        html = path.read_text(encoding="utf-8")
+        assert html.startswith("<!doctype html>")
+        assert '<meta charset="utf-8">' in html.split("</head>")[0]
+        assert f'"{path.stem}"' in page  # listed in INTERACTIVE, so the lesson page links to it
 
 
 def test_every_referenced_data_file_exists_and_parses():
